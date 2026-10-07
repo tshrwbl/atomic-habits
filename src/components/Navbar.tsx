@@ -12,7 +12,8 @@ import {
   RotateCcw,
   Download,
   Upload,
-  Share2
+  Share2,
+  Bot
 } from 'lucide-react';
 import { ATOMIC_QUOTES } from '../data/quotes';
 
@@ -21,7 +22,7 @@ interface NavbarProps {
   setActiveTab: (tab: 'habits' | 'identities' | 'compounding' | 'scorecard') => void;
   onOpenAddModal: () => void;
   onOpenTemplatesModal: () => void;
-  onOpenShareModal: () => void;
+  onOpenShareModal: (tab?: 'export' | 'import' | 'prompt') => void;
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
   onResetData: () => void;
@@ -126,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             <button
-              onClick={onOpenShareModal}
+              onClick={() => onOpenShareModal('export')}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 rounded-lg transition-colors cursor-pointer"
               title="Share routines with others or import/export JSON"
             >
@@ -161,11 +162,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
               <div className="absolute right-0 top-full mt-1 hidden group-hover:block group-focus-within:block bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl shadow-xl p-2 w-52 text-xs z-50">
                 <button
-                  onClick={onOpenShareModal}
+                  onClick={() => onOpenShareModal('export')}
                   className="w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-semibold cursor-pointer"
                 >
                   <Share2 className="w-3.5 h-3.5 text-amber-500" />
                   <span>Share & Import / Export</span>
+                </button>
+                <button
+                  onClick={() => onOpenShareModal('prompt')}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg hover:bg-amber-50 dark:hover:bg-amber-950/40 text-stone-700 dark:text-stone-300 cursor-pointer"
+                >
+                  <Bot className="w-3.5 h-3.5 text-amber-500" />
+                  <span>AI Prompt (Copy Prompt)</span>
                 </button>
                 <div className="h-px bg-stone-200 dark:bg-stone-700 my-1" />
                 <button

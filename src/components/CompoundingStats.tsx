@@ -32,12 +32,13 @@ export const CompoundingStats: React.FC<CompoundingStatsProps> = ({
   const compoundYear = Math.pow(1 + dailyRate / 100, 365).toFixed(2);
 
   // User stats calculation
-  const totalHabits = habits.length;
+  const activeHabits = habits.filter(h => !h.archived);
+  const totalHabits = activeHabits.length;
   let totalVotes = 0;
   let bestStreak = 0;
   let currentActiveStreaks = 0;
 
-  habits.forEach((h) => {
+  activeHabits.forEach((h) => {
     totalVotes += h.completedDates.length;
     const streak = calculateStreak(h.completedDates);
     if (streak.currentStreak > 0) currentActiveStreaks++;
@@ -50,7 +51,7 @@ export const CompoundingStats: React.FC<CompoundingStatsProps> = ({
   let actual7 = 0;
 
   past7.forEach((day) => {
-    habits.forEach((h) => {
+    activeHabits.forEach((h) => {
       if (h.completedDates.includes(day.dateStr)) {
         actual7++;
       }
@@ -60,7 +61,7 @@ export const CompoundingStats: React.FC<CompoundingStatsProps> = ({
   const consistencyRate = possible7 > 0 ? Math.round((actual7 / possible7) * 100) : 0;
 
   // Filter habits with 1% Betterment Engine active
-  const bettermentHabits = habits.filter((h) => {
+  const bettermentHabits = activeHabits.filter((h) => {
     if (!h.betterment?.enabled) return false;
     if (periodFilter !== 'all' && h.betterment.period !== periodFilter) return false;
     return true;

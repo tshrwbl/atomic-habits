@@ -10,7 +10,8 @@ import {
   Sunset,
   Moon,
   Clock,
-  Share2
+  Share2,
+  Archive
 } from 'lucide-react';
 import { Habit, TimeOfDay } from '../types';
 import { HabitCard } from './HabitCard';
@@ -21,6 +22,7 @@ interface HabitListProps {
   onToggleDate: (habitId: string, dateStr: string) => void;
   onEditHabit: (habit: Habit) => void;
   onDeleteHabit: (habitId: string) => void;
+  onToggleArchiveHabit: (habitId: string) => void;
   onOpenAddModal: () => void;
   onOpenTemplatesModal: () => void;
   onOpenBetterment?: (habit: Habit) => void;
@@ -33,6 +35,7 @@ export const HabitList: React.FC<HabitListProps> = ({
   onToggleDate,
   onEditHabit,
   onDeleteHabit,
+  onToggleArchiveHabit,
   onOpenAddModal,
   onOpenTemplatesModal,
   onOpenBetterment,
@@ -42,6 +45,7 @@ export const HabitList: React.FC<HabitListProps> = ({
   const [selectedTime, setSelectedTime] = useState<'all' | TimeOfDay>('all');
   const [selectedIdentity, setSelectedIdentity] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
 
   const todayStr = getTodayDateString();
 
@@ -57,6 +61,9 @@ export const HabitList: React.FC<HabitListProps> = ({
   // Filtered habits
   const filteredHabits = useMemo(() => {
     return habits.filter((h) => {
+      if (showArchived ? !h.archived : h.archived) {
+        return false;
+      }
       if (selectedTime !== 'all' && h.timeOfDay !== selectedTime && h.timeOfDay !== 'anytime') {
         return false;
       }
@@ -72,7 +79,7 @@ export const HabitList: React.FC<HabitListProps> = ({
       }
       return true;
     });
-  }, [habits, selectedTime, selectedIdentity, searchQuery]);
+  }, [habits, selectedTime, selectedIdentity, searchQuery, showArchived]);
 
   // Today's summary progress
   const completedTodayCount = habits.filter((h) => h.completedDates.includes(todayStr)).length;
@@ -176,6 +183,18 @@ export const HabitList: React.FC<HabitListProps> = ({
 
         {/* Search & Identity selector */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+              showArchived
+                ? 'bg-amber-500 text-stone-950 font-semibold shadow-sm'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
+            }`}
+            title={showArchived ? "Hide archived habits" : "Show archived habits"}
+          >
+            <Archive className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Archived</span>
+          </button>
           {/* Identity filter */}
           {identities.length > 0 && (
             <select
@@ -216,6 +235,7 @@ export const HabitList: React.FC<HabitListProps> = ({
               onToggleDate={onToggleDate}
               onEditHabit={onEditHabit}
               onDeleteHabit={onDeleteHabit}
+              onToggleArchiveHabit={onToggleArchiveHabit}
               onOpenBetterment={onOpenBetterment}
               onShareHabit={onShareHabit}
             />

@@ -68,6 +68,7 @@ export function App() {
   // Share & Import/Export modal state
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [sharePreselectedHabitId, setSharePreselectedHabitId] = useState<string | null>(null);
+  const [shareInitialTab, setShareInitialTab] = useState<'export' | 'import' | 'prompt'>('export');
 
   // Sync dark mode class on <html> and meta theme-color
   useEffect(() => {
@@ -139,9 +140,16 @@ export function App() {
 
   // Delete habit
   const handleDeleteHabit = (habitId: string) => {
-    if (window.confirm('Are you sure you want to delete this habit?')) {
+    if (window.confirm('Are you sure you want to delete this habit completely?')) {
       setHabits((prev) => prev.filter((h) => h.id !== habitId));
     }
+  };
+
+  // Archive habit
+  const handleToggleArchiveHabit = (habitId: string) => {
+    setHabits((prev) =>
+      prev.map((h) => (h.id === habitId ? { ...h, archived: !h.archived } : h))
+    );
   };
 
   // 1% Betterment Engine modal opener
@@ -151,8 +159,9 @@ export function App() {
   };
 
   // Share modal opener
-  const handleOpenShareModal = (habitId?: string) => {
+  const handleOpenShareModal = (habitId?: string, tab: 'export' | 'import' | 'prompt' = 'export') => {
     setSharePreselectedHabitId(habitId || null);
+    setShareInitialTab(tab);
     setIsShareModalOpen(true);
   };
 
@@ -301,7 +310,7 @@ export function App() {
 
   // Stats calculation
   const totalVotes = habits.reduce((acc, h) => acc + h.completedDates.length, 0);
-  const activeStreakCount = habits.filter((h) => calculateStreak(h.completedDates).currentStreak > 0).length;
+  const activeStreakCount = habits.filter((h) => !h.archived && calculateStreak(h.completedDates).currentStreak > 0).length;
 
   return (
     <div className="min-h-screen flex flex-col bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors pb-20 md:pb-8">
@@ -317,7 +326,7 @@ export function App() {
           setIsAddModalOpen(true);
         }}
         onOpenTemplatesModal={() => setIsTemplatesModalOpen(true)}
-        onOpenShareModal={() => handleOpenShareModal()}
+        onOpenShareModal={(tab) => handleOpenShareModal(undefined, tab)}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         onResetData={handleResetData}
@@ -338,6 +347,7 @@ export function App() {
               setIsAddModalOpen(true);
             }}
             onDeleteHabit={handleDeleteHabit}
+            onToggleArchiveHabit={handleToggleArchiveHabit}
             onOpenAddModal={() => {
               setEditingHabit(null);
               setIsAddModalOpen(true);
@@ -471,6 +481,7 @@ export function App() {
         habits={habits}
         onImportHabits={handleImportHabits}
         preSelectedHabitId={sharePreselectedHabitId}
+        initialTab={shareInitialTab}
       />
     </div>
   );

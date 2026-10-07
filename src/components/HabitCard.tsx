@@ -15,7 +15,9 @@ import {
   Sparkles,
   TrendingUp,
   Target,
-  Share2
+  Share2,
+  Archive,
+  ArchiveRestore
 } from 'lucide-react';
 import { Habit } from '../types';
 import { calculateStreak, getPastDays, getTodayDateString } from '../utils/dateUtils';
@@ -27,6 +29,7 @@ interface HabitCardProps {
   onToggleDate: (habitId: string, dateStr: string) => void;
   onEditHabit: (habit: Habit) => void;
   onDeleteHabit: (habitId: string) => void;
+  onToggleArchiveHabit: (habitId: string) => void;
   onOpenBetterment?: (habit: Habit) => void;
   onShareHabit?: (habit: Habit) => void;
 }
@@ -36,6 +39,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   onToggleDate,
   onEditHabit,
   onDeleteHabit,
+  onToggleArchiveHabit,
   onOpenBetterment,
   onShareHabit,
 }) => {
@@ -223,6 +227,25 @@ export const HabitCard: React.FC<HabitCardProps> = ({
                   >
                     <Share2 className="w-3.5 h-3.5" />
                     <span>Share JSON</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      onToggleArchiveHabit(habit.id);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 cursor-pointer"
+                  >
+                    {habit.archived ? (
+                      <>
+                        <ArchiveRestore className="w-3.5 h-3.5" />
+                        <span>Unarchive</span>
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="w-3.5 h-3.5" />
+                        <span>Archive</span>
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={() => {

@@ -6,11 +6,17 @@ import {
   Upload, 
   Copy, 
   Check, 
-  FileText, 
   AlertCircle, 
   Sparkles, 
-  ShieldCheck,
-  PackageCheck
+  ShieldCheck, 
+  PackageCheck, 
+  Bot, 
+  ArrowRight,
+  TrendingUp,
+  Layers,
+  Clock,
+  Zap,
+  Gift
 } from 'lucide-react';
 import { Habit } from '../types';
 import { getTodayDateString } from '../utils/dateUtils';
@@ -22,7 +28,17 @@ interface ShareModalProps {
   habits: Habit[];
   onImportHabits: (importedHabits: Habit[], mode: 'merge' | 'replace') => void;
   preSelectedHabitId?: string | null;
+  initialTab?: 'export' | 'import' | 'prompt';
 }
+
+const PROMPT_PRESETS = [
+  '🏃 Fitness & Strength',
+  '⚡ Deep Work & Focus',
+  '🧘 Mindfulness & Sleep',
+  '📚 Reading & Lifelong Learning',
+  '🥗 Clean Nutrition & Hydration',
+  '✍️ Writing & Creativity',
+];
 
 export const ShareModal: React.FC<ShareModalProps> = ({
   isOpen,
@@ -30,8 +46,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   habits,
   onImportHabits,
   preSelectedHabitId,
+  initialTab = 'export',
 }) => {
-  const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
+  const [activeTab, setActiveTab] = useState<'export' | 'import' | 'prompt'>(initialTab);
 
   // Export State
   const [exportType, setExportType] = useState<'clean' | 'full'>('clean'); // 'clean' = recipe/template only, 'full' = with history
@@ -44,6 +61,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [importError, setImportError] = useState<string | null>(null);
   const [parsedHabits, setParsedHabits] = useState<Habit[] | null>(null);
 
+  // AI Prompt State
+  const [customGoal, setCustomGoal] = useState('');
+  const [habitCount, setHabitCount] = useState<number>(3);
+  const [promptCopied, setPromptCopied] = useState(false);
+
   // Initialize selected habits when opened
   useEffect(() => {
     if (preSelectedHabitId) {
@@ -53,15 +75,19 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   }, [preSelectedHabitId, habits, isOpen]);
 
-  // Reset import state when opened
+  // Reset import and prompt states when opened
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
       setImportText('');
       setImportError(null);
       setParsedHabits(null);
       setCopied(false);
+      setPromptCopied(false);
     }
-  }, [isOpen]);
+  }, [isOpen, initialTab]);
 
   if (!isOpen) return null;
 
@@ -120,6 +146,50 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  // Helper to extract JSON from raw text, markdown code blocks, or conversational AI responses
+  const extractJson = (rawText: string): any => {
+    const trimmed = rawText.trim();
+    if (!trimmed) return null;
+
+    // 1. Direct parsing attempt
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      // Continue to extraction strategies
+    }
+
+    // 2. Markdown fenced code block (```json ... ``` or ``` ... ```)
+    const markdownMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) {
+      try {
+        return JSON.parse(markdownMatch[1].trim());
+      } catch {
+        // Continue
+      }
+    }
+
+    // 3. Find outermost JSON object { ... } or array [ ... ]
+    const firstBrace = trimmed.indexOf('{');
+    const firstBracket = trimmed.indexOf('[');
+    let startIdx = -1;
+    let endIdx = -1;
+
+    if (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+      startIdx = firstBrace;
+      endIdx = trimmed.lastIndexOf('}');
+    } else if (firstBracket !== -1) {
+      startIdx = firstBracket;
+      endIdx = trimmed.lastIndexOf(']');
+    }
+
+    if (startIdx !== -1 && endIdx > startIdx) {
+      const candidate = trimmed.substring(startIdx, endIdx + 1);
+      return JSON.parse(candidate);
+    }
+
+    throw new Error('Could not find valid JSON format in the text provided.');
+  };
+
   // Validate incoming JSON text or file
   const handleValidateJson = (text: string) => {
     setImportText(text);
@@ -130,7 +200,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
 
     try {
-      const parsed = JSON.parse(text);
+      const parsed = extractJson(text);
+      if (!parsed) {
+        setImportError(null);
+        setParsedHabits(null);
+        return;
+      }
+
       let list: any[] = [];
 
       if (Array.isArray(parsed)) {
@@ -146,18 +222,35 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         return;
       }
 
-      // Validate that items look like habits
+      // Validate that items look like habits with all settings preserved
       const validHabits: Habit[] = list.map((item, idx) => ({
         id: item.id || `imported-${Date.now()}-${idx}`,
         title: String(item.title || 'Untitled Habit'),
         identity: String(item.identity || 'Better Self'),
         timeOfDay: ['morning', 'afternoon', 'evening', 'anytime'].includes(item.timeOfDay) ? item.timeOfDay : 'anytime',
-        habitStack: item.habitStack,
-        twoMinuteVersion: item.twoMinuteVersion,
-        attractiveReward: item.attractiveReward,
+        habitStack: item.habitStack && (item.habitStack.after || item.habitStack.then)
+          ? {
+              after: String(item.habitStack.after || 'my regular routine'),
+              then: String(item.habitStack.then || item.title || 'my habit'),
+            }
+          : undefined,
+        twoMinuteVersion: item.twoMinuteVersion ? String(item.twoMinuteVersion) : undefined,
+        attractiveReward: item.attractiveReward ? String(item.attractiveReward) : undefined,
         completedDates: Array.isArray(item.completedDates) ? item.completedDates : [],
         createdAt: item.createdAt || getTodayDateString(),
-        betterment: item.betterment,
+        targetPerWeek: typeof item.targetPerWeek === 'number' ? item.targetPerWeek : 7,
+        betterment: item.betterment
+          ? {
+              enabled: item.betterment.enabled !== false,
+              baselineValue: Number(item.betterment.baselineValue) || 1,
+              unit: String(item.betterment.unit || 'units'),
+              period: ['daily', 'weekly', 'monthly'].includes(item.betterment.period)
+                ? item.betterment.period
+                : 'daily',
+              ratePercent: Number(item.betterment.ratePercent) || 1,
+              startDate: item.betterment.startDate || getTodayDateString(),
+            }
+          : undefined,
         bettermentLogs: item.bettermentLogs || {},
       }));
 
@@ -207,6 +300,107 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     setSelectedHabitIds([]);
   };
 
+  // Generate Master AI Prompt for ChatGPT / Claude / Gemini
+  const isCustomGoalActive = Boolean(customGoal.trim());
+
+  const generatePromptText = () => {
+    const today = getTodayDateString();
+
+    const introSection = isCustomGoalActive
+      ? `You are an elite behavioral scientist and Atomic Habits coach inspired by James Clear.
+Your task is to design a personalized routine of ${habitCount} atomic habits formatted as a strict JSON document that can be directly imported into the Atomic Habits web app.
+
+USER SPECIFIC GOAL / FOCUS:
+"${customGoal.trim()}"
+Design all habits, identities, habit stacks, 2-minute gateways, and 1% metrics specifically around this objective.`
+      : `Convert the habits we discussed (or the habits I specified above) into a valid JSON document that can be directly imported into the Atomic Habits web app.
+
+Keep the exact habits and count I requested. Do not change what I asked for—simply configure each habit with all required behavioral settings according to James Clear's Atomic Habits framework.`;
+
+    return `${introSection}
+=====================================================
+ATOMIC HABITS FRAMEWORK & REQUIRED SETTINGS:
+For EACH habit in the routine, configure ALL settings according to the 4 Laws of Behavior Change:
+
+1. "id": A unique string ID (e.g. "habit-ai-1", "habit-ai-2").
+2. "title": Action-oriented habit name (e.g. "Read 10 Pages of Non-Fiction", "Morning Core & Mobility Movement", "Deep Work Sprint").
+3. "identity": Identity-based framing answering "Who do you want to become?" (e.g. "Lifelong Learner", "Energized Athlete", "Master Craftsperson", "Mindful Thinker", "Healthy & Vital Person", "Consistent Writer", "Organized Professional").
+4. "timeOfDay": Routine schedule slot. MUST be one of: "morning", "afternoon", "evening", or "anytime".
+5. "habitStack": The 1st Law (Make it Obvious) implementation cue formula:
+   - "after": Specific anchor habit / trigger (e.g. "After I brew my morning coffee", "After I sit down at my desk and put on headphones", "After I brush my teeth before bed").
+   - "then": The new atomic habit (e.g. "I will read 10 pages", "I will write focused code", "I will write 3 things I am grateful for").
+6. "twoMinuteVersion": The 3rd Law (Make it Easy) 2-Minute Rule gateway habit. Downscale the habit to take under 2 minutes to eliminate starting friction (e.g. "Open book and read just 1 page", "Put on shoes and do 5 pushups", "Open code editor and clear open tabs").
+7. "attractiveReward": The 2nd & 4th Law (Make it Attractive & Satisfying) temptation bundling or immediate reward (e.g. "Sip fresh espresso in my favorite armchair", "Play favorite high-energy music playlist", "Relax in calm dim bedroom lighting").
+8. "betterment": The 1% Compounding Betterment Engine configuration:
+   - "enabled": true
+   - "baselineValue": Starting measurable baseline (e.g. 10, 15, 45, 3).
+   - "unit": Metric unit (e.g. "pages", "mins", "reps", "words", "steps", "sentences").
+   - "period": Compounding increment interval. MUST be one of: "daily", "weekly", or "monthly".
+   - "ratePercent": Compounding rate percentage (standard is 1 for +1% compounding).
+   - "startDate": "${today}" (current date YYYY-MM-DD).
+9. "completedDates": [] (empty array).
+10. "createdAt": "${today}" (current date YYYY-MM-DD).
+
+=====================================================
+JSON SCHEMA & SAMPLE OUTPUT:
+Return ONLY a valid JSON object matching this exact schema:
+
+{
+  "version": "2.0",
+  "type": "atomic-habits-routine",
+  "exportedAt": "${new Date().toISOString()}",
+  "count": ${habitCount},
+  "habits": [
+    {
+      "id": "habit-ai-1",
+      "title": "Read 10 Pages of Non-Fiction",
+      "identity": "Lifelong Learner",
+      "timeOfDay": "morning",
+      "habitStack": {
+        "after": "After I brew my morning coffee",
+        "then": "I will read non-fiction books"
+      },
+      "twoMinuteVersion": "Open book and read just 1 page",
+      "attractiveReward": "Sip fresh espresso in my favorite armchair",
+      "betterment": {
+        "enabled": true,
+        "baselineValue": 10,
+        "unit": "pages",
+        "period": "daily",
+        "ratePercent": 1,
+        "startDate": "${today}"
+      },
+      "completedDates": [],
+      "createdAt": "${today}"
+    }
+  ]
+}
+
+=====================================================
+STRICT RULES FOR OUTPUT:
+1. Output ONLY the JSON code block (enclosed in \`\`\`json \`\`\` or raw JSON). Do NOT include conversational pleasantries, markdown text outside the code fence, or explanations.
+2. Ensure valid JSON syntax: double-quoted keys and strings, no trailing commas.
+3. Every habit MUST include all settings: title, identity, timeOfDay, habitStack, twoMinuteVersion, attractiveReward, and betterment.`;
+  };
+
+  const handleCopyPrompt = async () => {
+    const promptText = generatePromptText();
+    try {
+      await navigator.clipboard.writeText(promptText);
+      setPromptCopied(true);
+      setTimeout(() => setPromptCopied(false), 2500);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = promptText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setPromptCopied(true);
+      setTimeout(() => setPromptCopied(false), 2500);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
@@ -224,7 +418,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 Share & Import / Export Habits
               </h2>
               <p className="text-[11px] text-stone-600 dark:text-stone-400">
-                Share routines as JSON or backup & restore your habits
+                Share routines, backup & restore, or generate with AI prompt
               </p>
             </div>
           </div>
@@ -237,10 +431,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         </div>
 
         {/* Tab switcher */}
-        <div className="flex border-b border-stone-100 dark:border-stone-800 px-6 pt-2 bg-stone-50/50 dark:bg-stone-900/50">
+        <div className="flex border-b border-stone-100 dark:border-stone-800 px-6 pt-2 bg-stone-50/50 dark:bg-stone-900/50 overflow-x-auto gap-1">
           <button
             onClick={() => setActiveTab('export')}
-            className={`flex items-center gap-2 pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+            className={`flex items-center gap-2 pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
               activeTab === 'export'
                 ? 'border-amber-600 text-amber-700 dark:text-amber-400'
                 : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
@@ -252,7 +446,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
           <button
             onClick={() => setActiveTab('import')}
-            className={`flex items-center gap-2 pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+            className={`flex items-center gap-2 pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
               activeTab === 'import'
                 ? 'border-amber-600 text-amber-700 dark:text-amber-400'
                 : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
@@ -261,10 +455,23 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <Upload className="w-4 h-4" />
             <span>Import JSON</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('prompt')}
+            className={`flex items-center gap-2 pb-3 px-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer whitespace-nowrap ${
+              activeTab === 'prompt'
+                ? 'border-amber-600 text-amber-700 dark:text-amber-400'
+                : 'border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
+            }`}
+          >
+            <Bot className="w-4 h-4 text-amber-500" />
+            <span>Copy Prompt</span>
+          </button>
         </div>
 
         {/* Tab Content */}
         <div className="p-6 overflow-y-auto space-y-5 flex-1">
+          {/* TAB 1: EXPORT & SHARE */}
           {activeTab === 'export' && (
             <div className="space-y-4">
               {/* Export Mode */}
@@ -406,6 +613,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             </div>
           )}
 
+          {/* TAB 2: IMPORT JSON */}
           {activeTab === 'import' && (
             <div className="space-y-4">
               {/* File Upload Box */}
@@ -425,19 +633,29 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     Click to browse or drop an Atomic Habits JSON file
                   </div>
                   <div className="text-[11px] text-stone-600 dark:text-stone-400">
-                    Accepts .json files exported from Atomic Habits
+                    Accepts .json files exported from Atomic Habits or AI outputs
                   </div>
                 </label>
               </div>
 
               {/* Paste Textarea */}
               <div>
-                <label className="block text-xs font-semibold text-stone-800 dark:text-stone-200 mb-1">
-                  Or Paste JSON Directly:
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-stone-800 dark:text-stone-200">
+                    Or Paste JSON Directly:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('prompt')}
+                    className="text-[11px] text-amber-700 dark:text-amber-400 hover:underline font-semibold cursor-pointer flex items-center gap-1"
+                  >
+                    <Bot className="w-3 h-3" />
+                    <span>Need habits? Copy AI Prompt</span>
+                  </button>
+                </div>
                 <textarea
                   rows={4}
-                  placeholder='Paste JSON here (e.g. {"habits": [...]})'
+                  placeholder='Paste JSON or AI response here (e.g. {"habits": [...]})'
                   value={importText}
                   onChange={(e) => handleValidateJson(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none"
@@ -527,6 +745,249 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   {parsedHabits ? `${parsedHabits.length} Habits` : 'Habits'}
                 </span>
               </button>
+            </div>
+          )}
+
+          {/* TAB 3: COPY PROMPT (AI PROMPT GENERATOR) */}
+          {activeTab === 'prompt' && (
+            <div className="space-y-4">
+              {/* Introduction Banner */}
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Bot className="w-4 h-4" />
+                </div>
+                <div className="flex-1 text-xs">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h4 className="font-bold text-stone-900 dark:text-white">
+                      {isCustomGoalActive ? 'Custom Goal AI Prompt' : 'Neutral JSON Import Prompt'}
+                    </h4>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      isCustomGoalActive
+                        ? 'bg-amber-500/20 text-amber-800 dark:text-amber-300'
+                        : 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
+                    }`}>
+                      {isCustomGoalActive ? 'Goal Mode' : 'Neutral Mode (Default)'}
+                    </span>
+                  </div>
+                  <p className="text-stone-600 dark:text-stone-400 leading-relaxed text-[11px]">
+                    {isCustomGoalActive
+                      ? `Instructs the AI to design habits specifically for "${customGoal.trim()}" and format them with all settings into importable JSON.`
+                      : 'Assumes you already told the AI what habits and how many you want. This prompt gives the AI the exact JSON format & settings instructions to convert them into an importable file.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Custom Goal & Habit Count Customization */}
+              <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/40 border border-stone-200 dark:border-stone-800 space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-semibold text-stone-800 dark:text-stone-200">
+                        {isCustomGoalActive ? 'Goal / Focus Area:' : 'Optional: Specify a Custom Goal'}
+                      </label>
+                      {isCustomGoalActive && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomGoal('')}
+                          className="text-[10px] text-amber-700 dark:text-amber-400 hover:underline font-semibold cursor-pointer"
+                        >
+                          &larr; Switch back to Neutral Prompt
+                        </button>
+                      )}
+                    </div>
+                    {isCustomGoalActive && (
+                      <div className="flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-400">
+                        <span>Count:</span>
+                        <div className="flex rounded-lg bg-stone-200/70 dark:bg-stone-700/60 p-0.5">
+                          {[3, 4, 5].map((cnt) => (
+                            <button
+                              key={cnt}
+                              type="button"
+                              onClick={() => setHabitCount(cnt)}
+                              className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all cursor-pointer ${
+                                habitCount === cnt
+                                  ? 'bg-white dark:bg-stone-900 text-amber-600 dark:text-amber-400 shadow-xs'
+                                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                              }`}
+                            >
+                              {cnt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={customGoal}
+                    onChange={(e) => setCustomGoal(e.target.value)}
+                    placeholder="Leave blank for Neutral prompt, or type a custom goal (e.g. Marathon training)"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                {/* Quick Presets */}
+                <div>
+                  <div className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 mb-1.5 flex items-center justify-between">
+                    <span>Quick suggestions (Click to apply, or leave unselected for Neutral prompt):</span>
+                    {isCustomGoalActive && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomGoal('')}
+                        className="text-[10px] text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 underline cursor-pointer"
+                      >
+                        Clear selection
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PROMPT_PRESETS.map((preset) => {
+                      const cleanText = preset.replace(/^[^\s]+\s/, '');
+                      const isSelected = customGoal.toLowerCase().includes(cleanText.toLowerCase());
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => {
+                            if (isSelected) {
+                              setCustomGoal('');
+                            } else {
+                              setCustomGoal(cleanText);
+                            }
+                          }}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-medium border transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-amber-500/20 border-amber-500 text-amber-900 dark:text-amber-200 font-bold'
+                              : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:border-amber-400'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons: Copy Prompt + Switch to Import */}
+              <div className="flex flex-col sm:flex-row items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleCopyPrompt}
+                  className={`w-full sm:flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                    promptCopied
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-amber-400 hover:bg-amber-500 text-stone-950 shadow-amber-500/10'
+                  }`}
+                >
+                  {promptCopied ? (
+                    <Check className="w-4 h-4 stroke-[2.5]" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                  <span>
+                    {promptCopied
+                      ? 'Copied AI Prompt to Clipboard!'
+                      : isCustomGoalActive
+                      ? 'Copy Goal-Specific AI Prompt'
+                      : 'Copy Neutral AI Prompt (All Settings)'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('import')}
+                  className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-stone-700 dark:text-stone-300 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer"
+                >
+                  <span>Ready? Paste in Import Tab</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* All Settings Included Grid */}
+              <div className="rounded-xl border border-stone-200 dark:border-stone-800 p-3 bg-stone-50/50 dark:bg-stone-900/50">
+                <div className="text-[11px] font-bold text-stone-800 dark:text-stone-200 mb-2 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Configured Settings Included in this AI Prompt:</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px]">
+                  <div className="p-2 rounded-lg bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700">
+                    <span className="font-bold text-stone-900 dark:text-stone-100 block mb-0.5">🏷️ Identity Framing</span>
+                    <span className="text-stone-500 dark:text-stone-400">"Who do you want to become?" (e.g. Lifelong Learner)</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700">
+                    <span className="font-bold text-stone-900 dark:text-stone-100 block mb-0.5 flex items-center gap-1">
+                      <Layers className="w-3 h-3 text-amber-500" />
+                      Habit Stacking
+                    </span>
+                    <span className="text-stone-500 dark:text-stone-400">Anchor trigger: "After [Current], then [New]"</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700">
+                    <span className="font-bold text-stone-900 dark:text-stone-100 block mb-0.5 flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-amber-500" />
+                      2-Minute Rule
+                    </span>
+                    <span className="text-stone-500 dark:text-stone-400">Frictionless gateway version to eliminate resistance</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700">
+                    <span className="font-bold text-stone-900 dark:text-stone-100 block mb-0.5 flex items-center gap-1">
+                      <Gift className="w-3 h-3 text-amber-500" />
+                      Attractive Reward
+                    </span>
+                    <span className="text-stone-500 dark:text-stone-400">Temptation bundling for immediate satisfaction</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700">
+                    <span className="font-bold text-stone-900 dark:text-stone-100 block mb-0.5 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3 text-emerald-500" />
+                      1% Engine
+                    </span>
+                    <span className="text-stone-500 dark:text-stone-400">Baseline value, measurable unit, period & +1% rate</span>
+                  </div>
+                  <div className="p-2 rounded-lg bg-white dark:bg-stone-800 border border-stone-100 dark:border-stone-700">
+                    <span className="font-bold text-stone-900 dark:text-stone-100 block mb-0.5 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-stone-500" />
+                      Time Slot
+                    </span>
+                    <span className="text-stone-500 dark:text-stone-400">Morning, afternoon, evening, or anytime tags</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Formatted Prompt Preview */}
+              <div>
+                <div className="flex items-center justify-between text-[11px] font-medium text-stone-600 dark:text-stone-400 mb-1">
+                  <span>
+                    Prompt Preview ({isCustomGoalActive ? 'Goal-Specific Mode' : 'Neutral Mode - Preserves Your Custom Habits'}):
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyPrompt}
+                    className="text-amber-700 dark:text-amber-400 hover:underline font-semibold cursor-pointer flex items-center gap-1"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>Copy Full Prompt</span>
+                  </button>
+                </div>
+                <pre className="p-3 bg-stone-900 text-stone-300 rounded-xl text-[10px] font-mono overflow-x-auto max-h-44 leading-relaxed border border-stone-800 whitespace-pre-wrap select-all">
+                  {generatePromptText()}
+                </pre>
+              </div>
+
+              {/* Quick 3-Step Walkthrough */}
+              <div className="p-3 rounded-xl bg-stone-100 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-800 text-[11px] text-stone-600 dark:text-stone-400">
+                <span className="font-bold text-stone-800 dark:text-stone-200 block mb-1">
+                  How it works:
+                </span>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  <li>
+                    {isCustomGoalActive
+                      ? 'Click Copy Goal-Specific AI Prompt to send your goals to the AI.'
+                      : 'Chat with your AI to define your habits and quantity, then send this Neutral Prompt to convert them into importable JSON.'}
+                  </li>
+                  <li>Paste into <strong className="text-stone-700 dark:text-stone-300">ChatGPT, Claude, Gemini, or any AI assistant</strong>.</li>
+                  <li>Copy the AI's JSON output, switch to the <strong>Import JSON</strong> tab, and click <strong>Merge Habits</strong>!</li>
+                </ol>
+              </div>
             </div>
           )}
         </div>
