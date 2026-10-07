@@ -1,40 +1,609 @@
 @import "tailwindcss";
 
-@variant dark (&:where(.dark, .dark *));
+/* Class-based dark mode (toggled on <html>) */
+@custom-variant dark (&:where(.dark, .dark *));
 
+/* ==========================================================================
+   FLIP7 DESIGN SYSTEM - TOKENS
+   Retro-playful, teal-coral-gold design system inspired by Flip7 card game.
+   Tactile, playful, high-contrast, with colored glow elevation and cream inputs.
+   ========================================================================== */
 @layer base {
   :root {
     color-scheme: light;
+
+    /* Flip7 Core Palette */
+    --f7-teal: #2BA8A2;
+    --f7-teal-light: #3CC4BD;
+    --f7-teal-dark: #1E8C86;
+    --f7-teal-bg: #E8F6F5;
+
+    --f7-gold: #FFD23F;
+    --f7-gold-light: #FFE47A;
+    --f7-gold-dark: #E6B800;
+
+    --f7-coral: #EF6C4A;
+    --f7-coral-light: #FF8A6A;
+    --f7-coral-dark: #D45233;
+
+    --f7-cream: #FFF8E7;
+    --f7-cream-dark: #F7EACB;
+    --f7-sky: #5DADE2;
+
+    --f7-success: #27AE60;
+    --f7-error: #E74C3C;
+
+    /* Semantic Light Theme */
+    --canvas: #EFF8F7;           /* Surface Base - subtle refreshing teal tint */
+    --surface: #FFFFFF;          /* Card backgrounds */
+    --surface-2: #F4FAF9;        /* Inset panels */
+    --surface-3: #E2F0EE;        /* Hover / active inset */
+    --input-bg: #FFF8E7;         /* Cream input surface */
+    --input-bg-focus: #FFFFFF;
+
+    --line: #D5ECE9;             /* Borders */
+    --line-strong: #B0DDD8;      /* Strong borders */
+    --line-dashed: #B0DDD8;
+
+    --ink: #103432;              /* Deep Teal Black - ultra contrast (14:1) */
+    --ink-2: #245854;            /* Secondary text (7:1) */
+    --ink-3: #587F7C;            /* Muted / meta (4.5:1+) */
+
+    /* Brand references */
+    --brand: var(--f7-teal);
+    --brand-hover: var(--f7-teal-dark);
+    --brand-light: var(--f7-teal-light);
+    --brand-bg: var(--f7-teal-bg);
+    --brand-fg: #103432;
+    --on-brand: #FFFFFF;
+
+    --accent: var(--f7-gold);
+    --accent-hover: var(--f7-gold-dark);
+    --on-accent: #173836;
+
+    --coral: var(--f7-coral);
+    --coral-bg: #FDF0EC;
+    --coral-fg: #BF360C;
+
+    --success: var(--f7-success);
+    --success-bg: #EAF8F0;
+    --success-fg: #1B7A43;
+
+    --sky: var(--f7-sky);
+    --sky-bg: #EDF7FD;
+    --sky-fg: #1F618D;
+
+    /* Elevation - Colored Glow System */
+    --shadow-sm: 0 2px 8px rgba(16, 52, 50, 0.06);
+    --shadow-md: 0 4px 16px rgba(16, 52, 50, 0.08);
+    --shadow-lg: 0 8px 32px rgba(16, 52, 50, 0.12);
+    --shadow-card: 0 4px 20px rgba(43, 168, 162, 0.12);
+    --shadow-coral-glow: 0 4px 20px rgba(239, 108, 74, 0.35);
+    --shadow-teal-glow: 0 4px 20px rgba(43, 168, 162, 0.30);
+    --shadow-accent-glow: 0 4px 20px rgba(255, 210, 63, 0.40);
+    --shadow-sky-glow: 0 4px 16px rgba(93, 173, 226, 0.30);
+    --shadow-focus: 0 0 0 4px rgba(43, 168, 162, 0.20);
+    --backdrop: rgba(16, 52, 50, 0.45);
   }
-  
+
   :root.dark {
     color-scheme: dark;
+
+    /* Flip7 Semantic Dark Theme */
+    --canvas: #0C1B1A;           /* Deep game table teal */
+    --surface: #142827;          /* Surface card */
+    --surface-2: #1B3533;        /* Inset panel */
+    --surface-3: #224240;        /* Hover panel */
+    --input-bg: #1D3A38;         /* Dark cream/teal input surface */
+    --input-bg-focus: #244643;
+
+    --line: #264B48;
+    --line-strong: #346360;
+    --line-dashed: #346360;
+
+    --ink: #F4FAF9;              /* High contrast crisp white-teal */
+    --ink-2: #C3E3E0;            /* Soft teal white */
+    --ink-3: #87B2AE;            /* Muted teal */
+
+    --brand: #3CC4BD;            /* Brighter teal for dark mode */
+    --brand-hover: #50D4CE;
+    --brand-light: #2BA8A2;
+    --brand-bg: rgba(43, 168, 162, 0.16);
+    --brand-fg: #50D4CE;
+    --on-brand: #0C1B1A;
+
+    --accent: #FFD23F;
+    --accent-hover: #FFE47A;
+    --on-accent: #0C1B1A;
+
+    --coral: #FF8A6A;
+    --coral-bg: rgba(239, 108, 74, 0.18);
+    --coral-fg: #FFAB91;
+
+    --success: #34D399;
+    --success-bg: rgba(39, 174, 96, 0.18);
+    --success-fg: #6EE7B7;
+
+    --sky: #7FB3D5;
+    --sky-bg: rgba(93, 173, 226, 0.18);
+    --sky-fg: #AED6F1;
+
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.60);
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.35), 0 0 12px rgba(43, 168, 162, 0.12);
+    --shadow-coral-glow: 0 4px 24px rgba(239, 108, 74, 0.45);
+    --shadow-teal-glow: 0 4px 24px rgba(60, 196, 189, 0.35);
+    --shadow-accent-glow: 0 4px 24px rgba(255, 210, 63, 0.45);
+    --shadow-sky-glow: 0 4px 20px rgba(93, 173, 226, 0.40);
+    --shadow-focus: 0 0 0 4px rgba(60, 196, 189, 0.25);
+    --backdrop: rgba(0, 0, 0, 0.70);
+  }
+
+  html {
+    background-color: var(--canvas);
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', PingFang SC, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--canvas);
+    color: var(--ink);
   }
-  
+
   code, pre {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  ::selection {
+    background: var(--f7-gold);
+    color: #103432;
+  }
+
+  /* Consistent, high-visibility focus */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+    border-radius: 8px;
+  }
+
+  input, select, textarea {
+    accent-color: var(--brand);
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
 }
 
-/* Custom scrollbars */
+/* Expose Tailwind Theme Tokens */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-input-bg: var(--input-bg);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-line-dashed: var(--line-dashed);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+
+  --color-f7-teal: var(--f7-teal);
+  --color-f7-teal-light: var(--f7-teal-light);
+  --color-f7-teal-dark: var(--f7-teal-dark);
+  --color-f7-teal-bg: var(--f7-teal-bg);
+
+  --color-f7-gold: var(--f7-gold);
+  --color-f7-gold-light: var(--f7-gold-light);
+  --color-f7-gold-dark: var(--f7-gold-dark);
+
+  --color-f7-coral: var(--f7-coral);
+  --color-f7-coral-light: var(--f7-coral-light);
+  --color-f7-coral-dark: var(--f7-coral-dark);
+
+  --color-f7-cream: var(--f7-cream);
+  --color-f7-sky: var(--f7-sky);
+  --color-f7-success: var(--f7-success);
+  --color-f7-error: var(--f7-error);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-light: var(--brand-light);
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-fg: var(--brand-fg);
+  --color-on-brand: var(--on-brand);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+
+  --color-coral: var(--coral);
+  --color-coral-bg: var(--coral-bg);
+  --color-coral-fg: var(--coral-fg);
+
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+
+  --color-sky: var(--sky);
+  --color-sky-bg: var(--sky-bg);
+  --color-sky-fg: var(--sky-fg);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-card: var(--shadow-card);
+  --shadow-coral-glow: var(--shadow-coral-glow);
+  --shadow-teal-glow: var(--shadow-teal-glow);
+  --shadow-accent-glow: var(--shadow-accent-glow);
+  --shadow-sky-glow: var(--shadow-sky-glow);
+  --shadow-focus: var(--shadow-focus);
+}
+
+/* ==========================================================================
+   FLIP7 COMPONENT UTILITIES
+   ========================================================================== */
+
+/* Flip7 Cards: 24px radius, shadow-card, 6px colored left accent bar */
+@utility f7-card {
+  background-color: var(--surface);
+  border: 1.5px solid var(--line);
+  border-left-width: 6px;
+  border-left-color: var(--f7-teal-light);
+  border-radius: 1.5rem; /* 24px */
+  box-shadow: var(--shadow-card);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+@utility f7-card-highlight {
+  border-left-color: var(--f7-gold);
+  box-shadow: var(--shadow-accent-glow);
+}
+
+@utility f7-card-coral {
+  border-left-color: var(--f7-coral);
+  box-shadow: var(--shadow-coral-glow);
+}
+
+@utility f7-card-success {
+  border-left-color: var(--f7-success);
+  box-shadow: var(--shadow-teal-glow);
+}
+
+/* Flip7 Pill Button (999px radius, bounce transition) */
+@utility f7-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  min-height: 2.5rem;
+  padding: 0.5rem 1.25rem;
+  font-weight: 800;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 160ms ease, background-color 160ms ease;
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+}
+
+/* Gold CTA Button - Pill shaped, gloss sheen */
+@utility f7-btn-gold {
+  background: linear-gradient(135deg, var(--f7-gold-light) 0%, var(--f7-gold) 60%, var(--f7-gold-dark) 100%);
+  color: #173836;
+  border: 1.5px solid var(--f7-gold-dark);
+  box-shadow: var(--shadow-accent-glow);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #FFF099 0%, var(--f7-gold-light) 50%, var(--f7-gold) 100%);
+    box-shadow: 0 6px 24px rgba(255, 210, 63, 0.55);
+  }
+}
+
+/* Teal Action Button */
+@utility f7-btn-teal {
+  background: linear-gradient(135deg, var(--f7-teal-light) 0%, var(--f7-teal) 60%, var(--f7-teal-dark) 100%);
+  color: #FFFFFF;
+  border: 1.5px solid var(--f7-teal-dark);
+  box-shadow: var(--shadow-teal-glow);
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #50D4CE 0%, var(--f7-teal-light) 60%, var(--f7-teal) 100%);
+    box-shadow: 0 6px 24px rgba(43, 168, 162, 0.45);
+  }
+}
+
+/* Coral Action / Alert Button */
+@utility f7-btn-coral {
+  background: linear-gradient(135deg, var(--f7-coral-light) 0%, var(--f7-coral) 60%, var(--f7-coral-dark) 100%);
+  color: #FFFFFF;
+  border: 1.5px solid var(--f7-coral-dark);
+  box-shadow: var(--shadow-coral-glow);
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #FFA085 0%, var(--f7-coral-light) 60%, var(--f7-coral) 100%);
+  }
+}
+
+/* Neutral Secondary Pill */
+@utility f7-btn-secondary {
+  background-color: var(--surface);
+  color: var(--ink);
+  border: 1.5px solid var(--line-strong);
+  box-shadow: var(--shadow-sm);
+  &:hover:not(:disabled) {
+    background-color: var(--surface-2);
+    border-color: var(--brand);
+  }
+}
+
+/* Cream Input Surface */
+@utility f7-input {
+  width: 100%;
+  background-color: var(--input-bg);
+  color: var(--ink);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 1rem; /* 16px */
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+  &::placeholder {
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  &:focus {
+    background-color: var(--input-bg-focus);
+    border-color: var(--brand);
+    box-shadow: var(--shadow-focus);
+  }
+}
+
+/* Flip7 Pill Segmented Control */
+@utility f7-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.4rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--ink-2);
+  background-color: var(--surface);
+  border: 1.5px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  transition: transform 150ms ease, background-color 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  &:hover {
+    border-color: var(--f7-teal);
+    color: var(--ink);
+  }
+  &:active {
+    transform: scale(0.96);
+  }
+  &[aria-pressed="true"], &[aria-selected="true"], &[data-active="true"] {
+    background: linear-gradient(135deg, var(--f7-teal-light) 0%, var(--f7-teal) 100%);
+    color: #FFFFFF;
+    border-color: var(--f7-teal-dark);
+    box-shadow: var(--shadow-teal-glow);
+  }
+}
+
+/* Gold Active Pill Variant */
+@utility f7-pill-gold {
+  &[aria-pressed="true"], &[aria-selected="true"], &[data-active="true"] {
+    background: linear-gradient(135deg, var(--f7-gold-light) 0%, var(--f7-gold) 100%);
+    color: #173836;
+    border-color: var(--f7-gold-dark);
+    box-shadow: var(--shadow-accent-glow);
+  }
+}
+
+/* Flip7 Tag / Chip */
+@utility f7-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  background-color: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+
+/* Dashed Section Divider */
+@utility f7-dashed-divider {
+  border-bottom: 2px dashed var(--line-dashed);
+}
+
+/* Retro Folded Ribbon Styling */
+@utility f7-ribbon {
+  position: relative;
+  background-color: var(--f7-cream);
+  color: var(--f7-teal-dark);
+  font-weight: 800;
+  border: 2px solid var(--f7-teal-dark);
+  box-shadow: 0 4px 12px rgba(30, 140, 134, 0.15);
+}
+
+/* Section Header Title with emoji */
+@utility f7-section-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Backward-compatible utility mapping */
+@utility card {
+  background-color: var(--surface);
+  border: 1.5px solid var(--line);
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow-card);
+}
+@utility panel {
+  background-color: var(--surface-2);
+  border: 1.5px solid var(--line);
+  border-radius: 1rem;
+}
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-size: 0.875rem;
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 160ms ease, background-color 160ms ease;
+  &:active:not(:disabled) { transform: scale(0.95); }
+}
+@utility btn-primary {
+  background: linear-gradient(135deg, var(--f7-gold-light) 0%, var(--f7-gold) 60%, var(--f7-gold-dark) 100%);
+  color: #173836;
+  border: 1.5px solid var(--f7-gold-dark);
+  box-shadow: var(--shadow-accent-glow);
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #FFF099 0%, var(--f7-gold-light) 50%, var(--f7-gold) 100%);
+  }
+}
+@utility btn-secondary {
+  background-color: var(--surface);
+  color: var(--ink);
+  border: 1.5px solid var(--line-strong);
+  box-shadow: var(--shadow-sm);
+  &:hover:not(:disabled) { background-color: var(--surface-2); border-color: var(--brand); }
+}
+@utility btn-soft {
+  background-color: var(--brand-bg);
+  color: var(--brand);
+  border: 1.5px solid var(--line-strong);
+  &:hover:not(:disabled) { background-color: var(--surface-3); }
+}
+@utility btn-ghost {
+  background-color: transparent;
+  color: var(--ink-2);
+  &:hover:not(:disabled) { background-color: var(--surface-2); color: var(--ink); }
+}
+@utility btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color 150ms, color 150ms, transform 150ms;
+  &:hover { background-color: var(--surface-2); color: var(--ink); }
+  &:active { transform: scale(0.92); }
+}
+@utility field {
+  width: 100%;
+  background-color: var(--input-bg);
+  color: var(--ink);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 1rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: border-color 150ms, box-shadow 150ms, background-color 150ms;
+  &::placeholder { color: var(--ink-3); font-weight: 500; }
+  &:focus { outline: none; background-color: var(--input-bg-focus); border-color: var(--brand); box-shadow: var(--shadow-focus); }
+}
+@utility chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background-color: var(--surface-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+@utility pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  padding: 0.4rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  cursor: pointer;
+  color: var(--ink-2);
+  background-color: var(--surface);
+  border: 1.5px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  transition: transform 150ms, background-color 150ms, color 150ms, border-color 150ms;
+  &:hover { border-color: var(--f7-teal); color: var(--ink); }
+  &[aria-pressed="true"], &[aria-selected="true"], &[data-active="true"] {
+    background: linear-gradient(135deg, var(--f7-teal-light) 0%, var(--f7-teal) 100%);
+    color: #FFFFFF;
+    border-color: var(--f7-teal-dark);
+    box-shadow: var(--shadow-teal-glow);
+  }
+}
+@utility eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+/* Animations */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pulse-boom {
+  0%, 100% { box-shadow: 0 4px 20px rgba(239, 108, 74, 0.35); }
+  50% { box-shadow: 0 8px 30px rgba(239, 108, 74, 0.65); transform: scale(1.01); }
+}
+@keyframes pulse-winner {
+  0%, 100% { box-shadow: 0 4px 20px rgba(255, 210, 63, 0.40); }
+  50% { box-shadow: 0 8px 32px rgba(255, 210, 63, 0.70); transform: scale(1.01); }
+}
+
+.animate-modal-in { animation: modal-in 200ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+.animate-boom { animation: pulse-boom 2s infinite ease-in-out; }
+.animate-winner { animation: pulse-winner 2s infinite ease-in-out; }
+
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(150, 150, 150, 0.25);
+  background: var(--line-strong);
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(150, 150, 150, 0.4);
+  background: var(--f7-teal);
 }

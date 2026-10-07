@@ -6,7 +6,7 @@ import {
   HabitTemplate,
 } from './types';
 import { INITIAL_HABITS, INITIAL_SCORECARD } from './data/initialHabits';
-import { Navbar } from './components/Navbar';
+import { Navbar, ThemePreference, TabKey } from './components/Navbar';
 import { HabitList } from './components/HabitList';
 import { IdentitySection } from './components/IdentitySection';
 import { CompoundingStats } from './components/CompoundingStats';
@@ -24,15 +24,28 @@ const STORAGE_KEY_SCORECARD = 'atomic_scorecard_data_v2';
 const STORAGE_KEY_THEME = 'atomic_theme_mode';
 
 export function App() {
-  // Theme state
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_THEME);
-    if (saved !== null) return saved === 'dark';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  // Theme state supporting light, dark, and system preference
+  const [themePreference, setThemePreference] = useState<ThemePreference>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_THEME) as ThemePreference | null;
+    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
+    return 'system';
   });
 
+  const [systemDark, setSystemDark] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = (e: MediaQueryListEvent) => setSystemDark(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
+
+  const resolvedDark = themePreference === 'system' ? systemDark : themePreference === 'dark';
+
   // Active view tab
-  const [activeTab, setActiveTab] = useState<'habits' | 'identities' | 'compounding' | 'scorecard'>('habits');
+  const [activeTab, setActiveTab] = useState<TabKey>('habits');
 
   // Habits state with localStorage
   const [habits, setHabits] = useState<Habit[]>(() => {
@@ -69,19 +82,23 @@ export function App() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [sharePreselectedHabitId, setSharePreselectedHabitId] = useState<string | null>(null);
 
-  // Sync dark mode class on <html> and meta theme-color
+  // Sync dark mode class on <html> and meta theme-color without transition lag
   useEffect(() => {
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    if (darkMode) {
+    document.documentElement.classList.add('theme-switching');
+    if (resolvedDark) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem(STORAGE_KEY_THEME, 'dark');
-      if (metaThemeColor) metaThemeColor.setAttribute('content', '#0c0a09');
+      if (metaThemeColor) metaThemeColor.setAttribute('content', '#0C1B1A');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem(STORAGE_KEY_THEME, 'light');
-      if (metaThemeColor) metaThemeColor.setAttribute('content', '#fafaf9');
+      if (metaThemeColor) metaThemeColor.setAttribute('content', '#EFF8F7');
     }
-  }, [darkMode]);
+    localStorage.setItem(STORAGE_KEY_THEME, themePreference);
+    const id = requestAnimationFrame(() => {
+      document.documentElement.classList.remove('theme-switching');
+    });
+    return () => cancelAnimationFrame(id);
+  }, [resolvedDark, themePreference]);
 
   // Sync habits to localStorage
   useEffect(() => {
@@ -304,7 +321,7 @@ export function App() {
   const activeStreakCount = habits.filter((h) => calculateStreak(h.completedDates).currentStreak > 0).length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors pb-20 md:pb-8">
+    <div className="min-h-screen flex flex-col bg-canvas text-ink transition-colors pb-24 md:pb-8">
       {/* PWA Mobile Installation Prompt */}
       <InstallPrompt />
 
@@ -318,8 +335,9 @@ export function App() {
         }}
         onOpenTemplatesModal={() => setIsTemplatesModalOpen(true)}
         onOpenShareModal={() => handleOpenShareModal()}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
+        themePreference={themePreference}
+        setThemePreference={setThemePreference}
+        resolvedDark={resolvedDark}
         onResetData={handleResetData}
         onExportData={handleExportData}
         onImportData={handleImportData}
@@ -377,12 +395,16 @@ export function App() {
         )}
       </main>
 
-      {/* Mobile Bottom Navigation Bar (app-like feel) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md border-t border-stone-200 dark:border-stone-800 px-3 py-1 flex items-center justify-around">
+      {/* Mobile Bottom Navigation Bar (native app style) */}
+      <nav
+        aria-label="Mobile navigation"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface/95 backdrop-blur-md border-t-2 border-line px-3 py-1.5 flex items-center justify-around pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-lg"
+      >
         <button
+          type="button"
           onClick={() => setActiveTab('habits')}
-          className={`flex flex-col items-center py-1 px-3 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeTab === 'habits' ? 'text-amber-700 dark:text-amber-400 font-bold' : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
+          className={`flex flex-col items-center py-1 px-3 text-[11px] font-bold transition-all cursor-pointer ${
+            activeTab === 'habits' ? 'text-f7-teal-dark dark:text-f7-teal-light scale-105' : 'text-ink-3 hover:text-ink'
           }`}
         >
           <Flame className="w-5 h-5 mb-0.5" />
@@ -390,9 +412,10 @@ export function App() {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('identities')}
-          className={`flex flex-col items-center py-1 px-3 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeTab === 'identities' ? 'text-amber-700 dark:text-amber-400 font-bold' : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
+          className={`flex flex-col items-center py-1 px-3 text-[11px] font-bold transition-all cursor-pointer ${
+            activeTab === 'identities' ? 'text-f7-teal-dark dark:text-f7-teal-light scale-105' : 'text-ink-3 hover:text-ink'
           }`}
         >
           <UserCheck className="w-5 h-5 mb-0.5" />
@@ -401,20 +424,23 @@ export function App() {
 
         {/* Center Mobile + Button */}
         <button
+          type="button"
           onClick={() => {
             setEditingHabit(null);
             setIsAddModalOpen(true);
           }}
-          className="-mt-5 w-11 h-11 rounded-full bg-gradient-to-tr from-amber-500 to-amber-600 text-stone-950 flex items-center justify-center shadow-lg shadow-amber-500/30 cursor-pointer active:scale-95"
+          className="-mt-6 w-14 h-14 rounded-full bg-gradient-to-tr from-f7-gold-dark via-f7-gold to-f7-gold-light text-[#173836] flex items-center justify-center shadow-accent-glow cursor-pointer active:scale-95 border-4 border-surface"
           title="Add New Habit"
+          aria-label="Add New Habit"
         >
-          <Plus className="w-6 h-6 stroke-[2.5]" />
+          <Plus className="w-7 h-7 stroke-[3]" />
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('compounding')}
-          className={`flex flex-col items-center py-1 px-3 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeTab === 'compounding' ? 'text-amber-700 dark:text-amber-400 font-bold' : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
+          className={`flex flex-col items-center py-1 px-3 text-[11px] font-bold transition-all cursor-pointer ${
+            activeTab === 'compounding' ? 'text-f7-teal-dark dark:text-f7-teal-light scale-105' : 'text-ink-3 hover:text-ink'
           }`}
         >
           <TrendingUp className="w-5 h-5 mb-0.5" />
@@ -422,15 +448,16 @@ export function App() {
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab('scorecard')}
-          className={`flex flex-col items-center py-1 px-3 text-[10px] font-semibold transition-colors cursor-pointer ${
-            activeTab === 'scorecard' ? 'text-amber-700 dark:text-amber-400 font-bold' : 'text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200'
+          className={`flex flex-col items-center py-1 px-3 text-[11px] font-bold transition-all cursor-pointer ${
+            activeTab === 'scorecard' ? 'text-f7-teal-dark dark:text-f7-teal-light scale-105' : 'text-ink-3 hover:text-ink'
           }`}
         >
           <ClipboardList className="w-5 h-5 mb-0.5" />
           <span>Scorecard</span>
         </button>
-      </div>
+      </nav>
 
       {/* Add / Edit Habit Modal */}
       <AddHabitModal

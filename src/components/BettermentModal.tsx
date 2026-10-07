@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { X, TrendingUp, Zap, Target, Calendar, Check, Save } from 'lucide-react';
+import { TrendingUp, Target, Save } from 'lucide-react';
 import { Habit, BettermentPeriod } from '../types';
 import { getBettermentSnapshot, getBettermentTrajectory } from '../utils/bettermentUtils';
 import { getTodayDateString } from '../utils/dateUtils';
 import { triggerCompletionConfetti } from '../utils/confetti';
+import { Modal } from './Modal';
 
 interface BettermentModalProps {
   habit: Habit | null;
@@ -56,6 +57,8 @@ export const BettermentModal: React.FC<BettermentModalProps> = ({
     },
   });
 
+  const formId = `betterment-form-${habit.id}`;
+
   const handleSaveAndLog = (e: React.FormEvent) => {
     e.preventDefault();
     const parsedActual = parseFloat(actualValue);
@@ -84,214 +87,192 @@ export const BettermentModal: React.FC<BettermentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div 
-        className="w-full max-w-xl bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 text-stone-950 flex items-center justify-center font-bold">
-              <TrendingUp className="w-4 h-4 text-stone-950" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-stone-900 dark:text-white">
-                1% Betterment Engine
-              </h2>
-              <p className="text-[11px] text-stone-600 dark:text-stone-400">
-                {habit.title}
-              </p>
-            </div>
-          </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="1% Betterment Engine"
+      subtitle={habit.title}
+      icon={<TrendingUp className="w-5 h-5 text-f7-teal" />}
+      size="max-w-xl"
+      footer={
+        <>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 rounded-lg cursor-pointer"
+            className="f7-btn f7-btn-secondary text-xs px-4 py-2"
           >
-            <X className="w-5 h-5" />
+            Cancel
           </button>
-        </div>
-
-        {/* Content */}
-        <form onSubmit={handleSaveAndLog} className="p-6 space-y-5 overflow-y-auto flex-1">
-          {/* Today's Target Card */}
-          {snapshot && (
-            <div className="bg-gradient-to-br from-amber-500/10 via-stone-50 to-emerald-500/10 dark:from-stone-950 dark:via-stone-900 dark:to-stone-950 p-4 rounded-2xl border border-stone-200 dark:border-stone-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-md">
-                    {snapshot.periodLabel} Milestone
-                  </span>
-                  <div className="text-xs text-stone-600 dark:text-stone-400 mt-1 font-medium">
-                    Compounded Target for Today:
-                  </div>
-                  <div className="text-2xl font-black text-stone-900 dark:text-white mt-0.5">
-                    {snapshot.currentTarget} <span className="text-sm font-semibold text-stone-600 dark:text-stone-400">{snapshot.unit}</span>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                    +{snapshot.percentGrowth}% Growth
-                  </div>
-                  <div className="text-[11px] font-medium text-stone-600 dark:text-stone-400">
-                    from baseline {snapshot.baseline} {snapshot.unit}
-                  </div>
-                </div>
-              </div>
-
-              {/* Log today's actual performance */}
-              <div className="mt-4 pt-3 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3">
-                <label className="text-xs font-semibold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Log Actual Today:</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="any"
-                    value={actualValue}
-                    onChange={(e) => setActualValue(e.target.value)}
-                    className="w-24 px-3 py-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-sm font-bold text-center focus:ring-2 focus:ring-amber-500"
-                  />
-                  <span className="text-xs font-semibold text-stone-600 dark:text-stone-400">{unit}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Betterment Configuration Form */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-              Betterment Cadence & Baseline
-            </h3>
-
-            {/* Time Period Selector */}
-            <div>
-              <label className="block text-xs font-semibold text-stone-800 dark:text-stone-200 mb-1.5">
-                Compounding Time Period:
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'daily', label: 'Daily (+1% each day)', desc: 'Fast rapid gains' },
-                  { id: 'weekly', label: 'Weekly (+1% each week)', desc: 'Sustainable & solid' },
-                  { id: 'monthly', label: 'Monthly (+1% each mo)', desc: 'Steady lifestyle shifts' },
-                ].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setPeriod(item.id as BettermentPeriod)}
-                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                      period === item.id
-                        ? 'border-amber-500 bg-amber-500/10 text-stone-900 dark:text-white font-bold shadow-xs'
-                        : 'border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/60'
-                    }`}
-                  >
-                    <div className="text-xs font-semibold capitalize">{item.id}</div>
-                    <div className="text-[10px] text-stone-600 dark:text-stone-400 mt-0.5">{item.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Baseline & Unit */}
-            <div className="grid grid-cols-2 gap-3">
+          <button
+            type="submit"
+            form={formId}
+            className="f7-btn f7-btn-gold text-xs px-5 py-2 shadow-accent-glow"
+          >
+            <Save className="w-4 h-4 stroke-[2.5]" />
+            <span>Save & Log Progress</span>
+          </button>
+        </>
+      }
+    >
+      <form id={formId} onSubmit={handleSaveAndLog} className="space-y-5">
+        {/* Today's Target Card in Cream Surface */}
+        {snapshot && (
+          <div className="bg-f7-cream text-ink p-5 rounded-3xl border-2 border-f7-gold shadow-accent-glow">
+            <div className="flex items-center justify-between">
               <div>
-                <label className="block text-xs font-semibold text-stone-800 dark:text-stone-200 mb-1">
-                  Starting Baseline:
-                </label>
+                <span className="text-[10px] font-black uppercase tracking-wider text-f7-teal-dark bg-f7-gold/30 px-2.5 py-0.5 rounded-full border border-f7-gold">
+                  {snapshot.periodLabel} Milestone
+                </span>
+                <div className="text-xs text-ink-3 mt-1.5 font-bold">
+                  Compounded Target for Today:
+                </div>
+                <div className="text-3xl font-black text-f7-teal-dark mt-0.5 leading-none">
+                  {snapshot.currentTarget} <span className="text-sm font-bold text-ink-3">{snapshot.unit}</span>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-xs font-black text-f7-coral-dark">
+                  +{snapshot.percentGrowth}% Growth
+                </div>
+                <div className="text-[11px] font-bold text-ink-3">
+                  from baseline {snapshot.baseline} {snapshot.unit}
+                </div>
+              </div>
+            </div>
+
+            {/* Log today's actual performance */}
+            <div className="mt-4 pt-3.5 border-t-2 border-dashed border-f7-gold-dark/30 flex items-center justify-between gap-3">
+              <label className="text-xs font-black text-f7-teal-dark flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-f7-coral" />
+                <span>Log Actual Today:</span>
+              </label>
+              <div className="flex items-center gap-2">
                 <input
                   type="number"
                   step="any"
-                  required
-                  value={baseline}
-                  onChange={(e) => setBaseline(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500"
+                  value={actualValue}
+                  onChange={(e) => setActualValue(e.target.value)}
+                  className="f7-input w-28 text-center text-sm font-black py-1.5 px-3 bg-surface"
                 />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-stone-800 dark:text-stone-200 mb-1">
-                  Metric Unit:
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. pages, mins, reps"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
-            </div>
-
-            {/* Rate percent */}
-            <div>
-              <label className="block text-xs font-semibold text-stone-800 dark:text-stone-200 mb-1">
-                Improvement Rate per {period}:
-              </label>
-              <div className="flex items-center gap-2">
-                {[1, 2, 5].map((rate) => (
-                  <button
-                    key={rate}
-                    type="button"
-                    onClick={() => setRatePercent(rate)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                      ratePercent === rate
-                        ? 'bg-amber-500 text-stone-950 font-bold'
-                        : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
-                    }`}
-                  >
-                    +{rate}% / {period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'}
-                  </button>
-                ))}
+                <span className="text-xs font-bold text-ink-2">{unit}</span>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Compounding Trajectory Road Map */}
-          <div className="space-y-2 pt-2 border-t border-stone-100 dark:border-stone-800">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
-              Projected Compounding Milestones
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {trajectory.map((point) => (
-                <div
-                  key={point.label}
-                  className="p-2.5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 text-center"
+        {/* Betterment Configuration Form */}
+        <div className="space-y-4">
+          <h3 className="text-xs font-black uppercase tracking-wider text-ink-3">
+            Betterment Cadence & Baseline
+          </h3>
+
+          {/* Time Period Selector */}
+          <div>
+            <label className="block text-xs font-bold text-ink mb-1.5">
+              Compounding Time Period:
+            </label>
+            <div className="grid grid-cols-3 gap-2.5">
+              {[
+                { id: 'daily', label: 'Daily', desc: '+1% each day' },
+                { id: 'weekly', label: 'Weekly', desc: '+1% each week' },
+                { id: 'monthly', label: 'Monthly', desc: '+1% each month' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setPeriod(item.id as BettermentPeriod)}
+                  className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                    period === item.id
+                      ? 'border-f7-gold bg-f7-gold/20 text-ink font-black shadow-accent-glow'
+                      : 'border-line bg-surface text-ink-2 hover:bg-surface-2'
+                  }`}
                 >
-                  <div className="text-[10px] font-bold text-stone-600 dark:text-stone-400 uppercase">
-                    {point.label}
-                  </div>
-                  <div className="text-sm font-extrabold text-stone-900 dark:text-white mt-0.5">
-                    {point.projected}
-                  </div>
-                  <div className="text-[10px] font-medium text-stone-600 dark:text-stone-400 truncate">
-                    {unit}
-                  </div>
-                </div>
+                  <div className="text-xs font-black capitalize">{item.label}</div>
+                  <div className="text-[10px] font-bold text-ink-3 mt-0.5">{item.desc}</div>
+                </button>
               ))}
             </div>
           </div>
 
-          {/* Footer Actions */}
-          <div className="pt-3 border-t border-stone-100 dark:border-stone-800 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-stone-950 bg-amber-400 hover:bg-amber-500 shadow-md shadow-amber-500/20 cursor-pointer"
-            >
-              <Save className="w-4 h-4 stroke-[2.5]" />
-              <span>Save & Log Progress</span>
-            </button>
+          {/* Baseline & Unit */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-ink mb-1">
+                Starting Baseline:
+              </label>
+              <input
+                type="number"
+                step="any"
+                required
+                value={baseline}
+                onChange={(e) => setBaseline(parseFloat(e.target.value) || 0)}
+                className="f7-input text-xs font-bold py-2 px-3"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-ink mb-1">
+                Metric Unit:
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. pages, mins, reps"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                className="f7-input text-xs font-bold py-2 px-3"
+              />
+            </div>
           </div>
-        </form>
-      </div>
-    </div>
+
+          {/* Rate percent */}
+          <div>
+            <label className="block text-xs font-bold text-ink mb-1">
+              Improvement Rate per {period}:
+            </label>
+            <div className="flex items-center gap-2">
+              {[1, 2, 5].map((rate) => (
+                <button
+                  key={rate}
+                  type="button"
+                  onClick={() => setRatePercent(rate)}
+                  className={`f7-pill text-xs px-3.5 py-1 ${
+                    ratePercent === rate ? 'f7-pill-gold' : ''
+                  }`}
+                  aria-pressed={ratePercent === rate}
+                >
+                  +{rate}% / {period === 'daily' ? 'day' : period === 'weekly' ? 'week' : 'month'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Compounding Trajectory Road Map */}
+        <div className="space-y-2 pt-3 border-t-2 border-dashed border-line">
+          <h3 className="text-xs font-black uppercase tracking-wider text-ink-3">
+            Projected Compounding Milestones
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {trajectory.map((point) => (
+              <div
+                key={point.label}
+                className="p-3 rounded-2xl bg-surface-2 border border-line text-center shadow-xs"
+              >
+                <div className="text-[10px] font-black text-ink-3 uppercase">
+                  {point.label}
+                </div>
+                <div className="text-sm font-black text-ink mt-0.5">
+                  {point.projected}
+                </div>
+                <div className="text-[10px] font-bold text-ink-3 truncate">
+                  {unit}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </form>
+    </Modal>
   );
 };

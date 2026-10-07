@@ -65,20 +65,20 @@ export const InstallPrompt: React.FC = () => {
   };
 
   return (
-    <div className="bg-gradient-to-r from-amber-500/15 via-emerald-500/10 to-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 text-xs">
+    <aside aria-label="Install App Banner" className="bg-f7-cream dark:bg-surface-2 border-b-2 border-dashed border-f7-gold dark:border-line px-4 py-3 text-xs text-ink transition-colors shadow-sm">
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-amber-500 text-stone-900 flex items-center justify-center flex-shrink-0 shadow-sm">
-            <Smartphone className="w-4 h-4 text-stone-950" />
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-2xl bg-f7-gold text-ink border-2 border-f7-gold-dark flex items-center justify-center flex-shrink-0 shadow-accent-glow">
+            <Smartphone className="w-4 h-4 stroke-[2.5]" />
           </div>
-          <div>
-            <span className="font-semibold text-stone-900 dark:text-stone-100">
-              Install Atomic Habits as a Mobile App
+          <div className="min-w-0">
+            <span className="font-black text-ink block truncate sm:inline text-sm">
+              Install Atomic Habits App
             </span>
-            <p className="text-[11px] text-stone-600 dark:text-stone-400 font-medium">
+            <p className="text-xs text-ink-3 font-semibold">
               {isIOS 
-                ? 'Tap Share icon below, then select "Add to Home Screen" to install.'
-                : 'Fast access, offline tracking, and home screen launch icon.'}
+                ? 'Tap Share below, then select "Add to Home Screen" to install.'
+                : 'Enjoy instant offline access and full-screen experience on your mobile device.'}
             </p>
           </div>
         </div>
@@ -86,37 +86,40 @@ export const InstallPrompt: React.FC = () => {
         <div className="flex items-center gap-2 flex-shrink-0">
           {deferredPrompt && (
             <button
+              type="button"
               onClick={handleInstallClick}
-              className="flex items-center gap-1.5 px-3 py-1.5 font-bold text-stone-950 bg-amber-400 hover:bg-amber-500 rounded-lg shadow-sm cursor-pointer transition-colors"
+              className="f7-btn f7-btn-gold px-4 py-1.5 text-xs shadow-accent-glow"
             >
-              <Download className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Install App</span>
+              <Download className="w-3.5 h-3.5 stroke-[3]" />
+              <span>Install</span>
             </button>
           )}
 
           {isIOS && (
-            <div className="hidden sm:flex items-center gap-1 text-[11px] bg-stone-200/90 dark:bg-stone-800 px-2.5 py-1 rounded-md text-stone-800 dark:text-stone-200 font-medium">
-              <Share2 className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+            <div className="hidden sm:inline-flex items-center gap-1.5 text-xs bg-surface border-2 border-line px-3 py-1.5 rounded-full text-ink-2 font-bold shadow-xs">
+              <Share2 className="w-3.5 h-3.5 text-f7-teal" />
               <span>Share &rarr; Add to Home Screen</span>
             </div>
           )}
 
           {installed && (
-            <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold">
-              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Installed</span>
+            <div className="inline-flex items-center gap-1 text-f7-teal-dark dark:text-f7-teal-light font-black text-xs">
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>Installed!</span>
             </div>
           )}
 
           <button
+            type="button"
             onClick={() => setDismissed(true)}
-            title="Dismiss"
-            className="p-1 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 cursor-pointer"
+            title="Dismiss installation banner"
+            aria-label="Dismiss installation banner"
+            className="w-8 h-8 rounded-full bg-surface-2 hover:bg-surface border border-line flex items-center justify-center text-ink-3 hover:text-ink cursor-pointer transition-colors shadow-xs"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
       </div>
-    </div>
+    </aside>
   );
 };

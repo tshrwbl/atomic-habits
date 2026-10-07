@@ -1,7 +1,8 @@
 import React from 'react';
-import { X, BookOpen, Plus, Check, ArrowRight, Zap, Gift } from 'lucide-react';
+import { BookOpen, Plus, ArrowRight, Zap } from 'lucide-react';
 import { HabitTemplate } from '../types';
 import { HABIT_TEMPLATES } from '../data/initialHabits';
+import { Modal } from './Modal';
 
 interface TemplatesModalProps {
   isOpen: boolean;
@@ -17,85 +18,62 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div 
-        className="w-full max-w-2xl bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-stone-100 dark:border-stone-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-stone-900 dark:text-white">
-                James Clear's Atomic Habit Templates
-              </h2>
-              <p className="text-[11px] text-stone-600 dark:text-stone-400">
-                Pre-configured with Habit Stacks and 2-Minute Rules
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 rounded-lg cursor-pointer"
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="James Clear's Atomic Habit Templates"
+      subtitle="Curated battle-tested routines with Habit Stacks and 2-Minute Rules"
+      icon={<BookOpen className="w-5 h-5 text-ink" />}
+      size="max-w-2xl"
+    >
+      {/* Templates List */}
+      <ul className="space-y-3.5">
+        {HABIT_TEMPLATES.map((tmpl) => (
+          <li
+            key={tmpl.title}
+            className="p-4 sm:p-5 rounded-3xl border-2 border-line border-l-[6px] border-l-f7-gold bg-surface hover:shadow-accent-glow hover:border-line-strong transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
           >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Templates List */}
-        <div className="p-6 overflow-y-auto space-y-3.5 flex-1">
-          {HABIT_TEMPLATES.map((tmpl) => (
-            <div
-              key={tmpl.title}
-              className="p-4 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 hover:border-amber-500/50 dark:hover:border-amber-500/50 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            >
-              <div className="space-y-1.5 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-800 dark:text-amber-300">
-                    {tmpl.identity}
-                  </span>
-                  <span className="text-[11px] font-medium text-stone-600 dark:text-stone-400 capitalize">
-                    {tmpl.timeOfDay}
-                  </span>
-                </div>
-
-                <h3 className="text-sm font-bold text-stone-900 dark:text-white">
-                  {tmpl.title}
-                </h3>
-                <p className="text-xs text-stone-600 dark:text-stone-400">
-                  {tmpl.description}
-                </p>
-
-                {/* Stacking snippet */}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-stone-700 dark:text-stone-300 pt-1">
-                  <div className="flex items-center gap-1">
-                    <ArrowRight className="w-3 h-3 text-amber-500" />
-                    <span>Stack: After {tmpl.stackAfter}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold">
-                    <Zap className="w-3 h-3" />
-                    <span>2-Min: {tmpl.twoMinuteVersion}</span>
-                  </div>
-                </div>
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="f7-chip bg-f7-teal-bg text-f7-teal-dark border border-f7-teal/30">
+                  {tmpl.identity}
+                </span>
+                <span className="text-xs font-bold text-ink-3 capitalize tracking-wide">
+                  {tmpl.timeOfDay}
+                </span>
               </div>
 
-              <button
-                onClick={() => {
-                  onSelectTemplate(tmpl);
-                  onClose();
-                }}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-stone-900 bg-amber-400 hover:bg-amber-500 transition-colors shadow-xs cursor-pointer flex-shrink-0"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Habit</span>
-              </button>
+              <h3 className="text-sm font-black text-ink">{tmpl.title}</h3>
+              <p className="text-xs text-ink-2 font-medium leading-relaxed">{tmpl.description}</p>
+
+              {/* Stacking snippet */}
+              <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-xs text-ink-2 pt-1">
+                <div className="flex items-center gap-1.5 font-semibold">
+                  <ArrowRight className="w-3.5 h-3.5 text-f7-teal" aria-hidden="true" />
+                  <span>Stack: After {tmpl.stackAfter}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-f7-teal-dark dark:text-f7-teal-light font-bold">
+                  <Zap className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>2-Min: {tmpl.twoMinuteVersion}</span>
+                </div>
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                onSelectTemplate(tmpl);
+                onClose();
+              }}
+              aria-label={`Add habit template: ${tmpl.title}`}
+              className="f7-btn f7-btn-gold px-4 py-2 text-xs flex-shrink-0"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" aria-hidden="true" />
+              <span>Add Habit</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </Modal>
   );
 };

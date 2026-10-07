@@ -21,6 +21,7 @@ import { Habit } from '../types';
 import { calculateStreak, getPastDays, getTodayDateString } from '../utils/dateUtils';
 import { getBettermentSnapshot } from '../utils/bettermentUtils';
 import { triggerCompletionConfetti } from '../utils/confetti';
+import { useDismissible } from '../hooks/useDismissible';
 
 interface HabitCardProps {
   habit: Habit;
@@ -40,7 +41,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   onShareHabit,
 }) => {
   const [showDetails, setShowDetails] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const menu = useDismissible();
 
   const streak = calculateStreak(habit.completedDates);
   const todayStr = getTodayDateString();
@@ -62,103 +63,117 @@ export const HabitCard: React.FC<HabitCardProps> = ({
     }
   };
 
+  const detailsId = `habit-details-${habit.id}`;
+
+  // Flip7 card accent bar border selection
+  const cardBorderClass = streak.completedToday
+    ? 'border-l-[6px] border-l-f7-success shadow-teal-glow'
+    : streak.needsRescueToday
+    ? 'border-l-[6px] border-l-f7-coral shadow-coral-glow animate-boom'
+    : bettermentSnapshot
+    ? 'border-l-[6px] border-l-f7-gold shadow-accent-glow'
+    : 'border-l-[6px] border-l-f7-teal-light shadow-card';
+
   return (
     <div
-      className={`relative rounded-2xl border transition-all duration-200 overflow-hidden bg-white dark:bg-stone-900 ${
-        streak.completedToday
-          ? 'border-emerald-300/80 dark:border-emerald-800/80 shadow-sm shadow-emerald-500/5'
-          : streak.needsRescueToday
-          ? 'border-amber-400 dark:border-amber-600 shadow-md shadow-amber-500/10'
-          : 'border-stone-200 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 shadow-sm'
-      }`}
+      className={`relative rounded-3xl bg-surface border-2 border-line ${cardBorderClass} transition-all duration-200 overflow-hidden hover:-translate-y-0.5`}
     >
-      {/* "Never Miss Twice" urgent indicator banner */}
+      {/* Flip7 BOOM State Alert: "Never Miss Twice" */}
       {streak.needsRescueToday && (
-        <div className="bg-amber-500/15 dark:bg-amber-500/20 border-b border-amber-500/30 px-3.5 py-1.5 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200">
-          <div className="flex items-center gap-1.5 font-medium">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-            <span>Never miss twice! Complete today to protect your streak.</span>
+        <div className="bg-coral-bg border-b-2 border-f7-coral/30 px-4 py-2 flex items-center justify-between gap-2 text-xs font-bold text-coral-fg">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-f7-coral text-white flex items-center justify-center text-[10px] shadow-xs">
+              !
+            </span>
+            <span>BOOM RISK: Never miss twice! Protect your streak today.</span>
           </div>
           {habit.twoMinuteVersion && (
             <button
+              type="button"
               onClick={handleCompleteTwoMinute}
-              className="text-[11px] underline font-bold text-amber-900 dark:text-amber-200 hover:text-amber-950 dark:hover:text-white cursor-pointer flex-shrink-0"
+              className="f7-btn f7-btn-coral text-[11px] py-1 px-3 min-h-0 cursor-pointer flex-shrink-0"
             >
-              Do 2-min rule
+              2-Min Rule
             </button>
           )}
         </div>
       )}
 
-      <div className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
+      <div className="p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3.5">
           {/* Main Habit Title & Checkbox */}
-          <div className="flex items-start gap-3.5 flex-1 min-w-0">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            {/* Flip7 Tactile Checkbox Button */}
             <button
+              type="button"
               onClick={handleToggleToday}
-              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer flex-shrink-0 mt-0.5 ${
+              className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer flex-shrink-0 mt-0.5 active:scale-90 ${
                 streak.completedToday
-                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30 scale-105'
-                  : 'border-2 border-stone-300 dark:border-stone-700 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-transparent'
+                  ? 'bg-f7-success text-white shadow-teal-glow border-2 border-f7-teal-dark'
+                  : 'bg-surface border-2 border-f7-teal/50 hover:border-f7-teal hover:bg-f7-teal-bg text-transparent'
               }`}
               title={streak.completedToday ? "Mark as not done today" : "Check off for today"}
+              aria-label={streak.completedToday ? `Mark "${habit.title}" as not done today` : `Check off "${habit.title}" for today`}
+              aria-pressed={streak.completedToday}
             >
-              <Check className={`w-4 h-4 sm:w-5 sm:h-5 stroke-[3] ${streak.completedToday ? 'opacity-100' : 'opacity-0'}`} />
+              <Check className={`w-6 h-6 stroke-[3.5] ${streak.completedToday ? 'opacity-100' : 'opacity-0'}`} />
             </button>
 
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                {/* Identity Tag */}
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                {/* Identity Tag (Flip7 Chip) */}
+                <span className="f7-chip bg-surface-2 border border-line text-ink-2">
+                  <span className="w-2 h-2 rounded-full bg-f7-teal" />
                   {habit.identity}
                 </span>
 
                 {/* 1% Betterment Engine Pill */}
                 {bettermentSnapshot && (
                   <button
+                    type="button"
                     onClick={() => onOpenBetterment?.(habit)}
-                    className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/25 flex items-center gap-1 hover:bg-amber-500/25 transition-colors cursor-pointer"
+                    className="f7-chip bg-f7-gold/20 text-f7-teal-dark dark:text-f7-gold border border-f7-gold font-black hover:bg-f7-gold/30 transition-colors cursor-pointer"
                     title={`1% Betterment Engine active! Improving by +${bettermentSnapshot.ratePercent}% every ${bettermentSnapshot.period}. Click to track.`}
                   >
-                    <TrendingUp className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                    <TrendingUp className="w-3.5 h-3.5 text-f7-coral" />
                     <span>+1% {bettermentSnapshot.period}</span>
                   </button>
                 )}
 
                 {/* Time of day */}
-                <span className="text-[11px] text-stone-600 dark:text-stone-400 capitalize flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-stone-500 dark:text-stone-400" />
+                <span className="text-xs text-ink-3 font-bold capitalize flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
                   {habit.timeOfDay}
                 </span>
               </div>
 
-              <h3 className={`text-base font-semibold leading-snug break-words transition-colors ${
+              <h3 className={`text-base sm:text-lg font-black leading-snug break-words transition-colors ${
                 streak.completedToday
-                  ? 'text-stone-800 dark:text-stone-200 line-through decoration-stone-400/60 dark:decoration-stone-600'
-                  : 'text-stone-900 dark:text-white'
+                  ? 'text-ink-3 line-through decoration-line-strong'
+                  : 'text-ink'
               }`}>
                 {habit.title}
               </h3>
 
               {/* 1% Betterment Target Indicator */}
               {bettermentSnapshot && (
-                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   <button
+                    type="button"
                     onClick={() => onOpenBetterment?.(habit)}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-success-bg text-success-fg border border-f7-success/40 hover:bg-f7-teal-bg transition-colors cursor-pointer"
                   >
-                    <Target className="w-3.5 h-3.5 text-emerald-500" />
+                    <Target className="w-3.5 h-3.5 text-f7-success" />
                     <span>
                       Target: {bettermentSnapshot.currentTarget} {bettermentSnapshot.unit}
                     </span>
                     {bettermentSnapshot.actualLoggedToday !== null && (
-                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                      <span className="font-extrabold text-f7-teal-dark dark:text-f7-teal-light">
                         (Logged: {bettermentSnapshot.actualLoggedToday})
                       </span>
                     )}
                   </button>
-                  <span className="text-[11px] font-medium text-stone-600 dark:text-stone-400">
+                  <span className="text-xs font-extrabold text-f7-teal">
                     +{bettermentSnapshot.percentGrowth}% compounded
                   </span>
                 </div>
@@ -166,8 +181,8 @@ export const HabitCard: React.FC<HabitCardProps> = ({
 
               {/* Habit Stack formula summary if available */}
               {habit.habitStack?.after && (
-                <p className="text-xs text-stone-600 dark:text-stone-400 mt-1 line-clamp-1">
-                  <span className="font-semibold text-stone-700 dark:text-stone-300">After:</span> {habit.habitStack.after}
+                <p className="text-xs text-ink-3 font-medium mt-1.5 line-clamp-1">
+                  <span className="font-extrabold text-ink-2">After:</span> {habit.habitStack.after}
                 </p>
               )}
             </div>
@@ -177,71 +192,87 @@ export const HabitCard: React.FC<HabitCardProps> = ({
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Streak flame badge */}
             <div
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-black transition-colors border-2 ${
                 streak.currentStreak > 0
-                  ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-transparent'
+                  ? 'bg-f7-gold/25 text-f7-teal-dark dark:text-f7-gold border-f7-gold shadow-accent-glow'
+                  : 'bg-surface-2 text-ink-3 border-line'
               }`}
               title={`Current streak: ${streak.currentStreak} days | Longest: ${streak.longestStreak} days`}
+              aria-label={`Current streak: ${streak.currentStreak} days`}
             >
-              <Flame className={`w-3.5 h-3.5 ${streak.currentStreak > 0 ? 'text-amber-500 fill-amber-500' : 'text-stone-500 dark:text-stone-400'}`} />
+              <Flame className={`w-4 h-4 ${streak.currentStreak > 0 ? 'text-f7-coral fill-f7-coral' : ''}`} />
               <span>{streak.currentStreak}</span>
             </div>
 
             {/* Menu trigger */}
-            <div className="relative">
+            <div ref={menu.ref} className="relative">
               <button
-                onClick={() => setShowMenu(!showMenu)}
-                className="p-1.5 text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 rounded-lg cursor-pointer"
+                type="button"
+                onClick={() => menu.setOpen(!menu.open)}
+                className="w-9 h-9 rounded-full flex items-center justify-center bg-surface border-2 border-line text-ink-2 hover:border-f7-teal hover:text-ink shadow-sm transition-all cursor-pointer"
+                aria-haspopup="menu"
+                aria-expanded={menu.open}
+                aria-label="Habit actions"
+                title="Habit actions"
               >
                 <MoreVertical className="w-4 h-4" />
               </button>
 
-              {showMenu && (
+              {menu.open && (
                 <div 
-                  className="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl shadow-lg p-1 text-xs z-30"
-                  onMouseLeave={() => setShowMenu(false)}
+                  role="menu"
+                  aria-label="Habit actions"
+                  className="absolute right-0 top-full mt-2 min-w-44 bg-surface border-2 border-line rounded-2xl shadow-lg p-1.5 z-30 animate-modal-in"
                 >
                   {bettermentSnapshot && (
                     <button
+                      type="button"
+                      role="menuitem"
                       onClick={() => {
-                        setShowMenu(false);
+                        menu.setOpen(false);
                         onOpenBetterment?.(habit);
                       }}
-                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 text-amber-800 dark:text-amber-400 font-semibold cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-xl text-xs font-bold text-f7-teal hover:bg-surface-2 cursor-pointer"
                     >
-                      <TrendingUp className="w-3.5 h-3.5" />
+                      <TrendingUp className="w-4 h-4" />
                       <span>1% Engine</span>
                     </button>
                   )}
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
-                      setShowMenu(false);
+                      menu.setOpen(false);
                       onShareHabit?.(habit);
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-xl text-xs font-bold text-ink-2 hover:bg-surface-2 cursor-pointer"
                   >
-                    <Share2 className="w-3.5 h-3.5" />
+                    <Share2 className="w-4 h-4" />
                     <span>Share JSON</span>
                   </button>
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
-                      setShowMenu(false);
+                      menu.setOpen(false);
                       onEditHabit(habit);
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-xl text-xs font-bold text-ink-2 hover:bg-surface-2 cursor-pointer"
                   >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit</span>
+                    <Edit3 className="w-4 h-4" />
+                    <span>Edit Habit</span>
                   </button>
+                  <div className="my-1 border-t border-line" role="separator" />
                   <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => {
-                      setShowMenu(false);
+                      menu.setOpen(false);
                       onDeleteHabit(habit.id);
                     }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-xl text-xs font-bold text-f7-coral-dark hover:bg-coral-bg cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                     <span>Delete</span>
                   </button>
                 </div>
@@ -251,49 +282,55 @@ export const HabitCard: React.FC<HabitCardProps> = ({
         </div>
 
         {/* 7-Day History Bubbles */}
-        <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between">
-          <div className="text-[11px] font-semibold text-stone-600 dark:text-stone-400">
+        <div className="mt-5 pt-3.5 border-t-2 border-dashed border-line flex items-center justify-between gap-2">
+          <div className="text-xs font-extrabold text-ink-3">
             Last 7 days:
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2" role="group" aria-label="Last 7 days">
             {pastDays.map((day) => {
               const isCompleted = habit.completedDates.includes(day.dateStr);
               return (
                 <button
+                  type="button"
                   key={day.dateStr}
                   onClick={() => onToggleDate(habit.id, day.dateStr)}
                   title={`${day.dateStr} (${isCompleted ? 'Completed' : 'Missed'}): Click to toggle`}
-                  className={`flex flex-col items-center justify-center w-7 h-9 rounded-lg transition-all cursor-pointer ${
+                  aria-label={`${day.dayName} ${day.dayNumber}${day.isToday ? ' (today)' : ''} – ${isCompleted ? 'completed' : 'not completed'}`}
+                  aria-pressed={isCompleted}
+                  className={`flex flex-col items-center justify-center gap-0.5 w-9 h-11 rounded-xl transition-all cursor-pointer ${
                     day.isToday
-                      ? 'ring-1.5 ring-amber-500 ring-offset-1 dark:ring-offset-stone-900'
+                      ? 'ring-2 ring-f7-gold ring-offset-2 ring-offset-surface'
                       : ''
                   } ${
                     isCompleted
-                      ? 'bg-emerald-600 text-white font-semibold shadow-xs'
-                      : 'bg-stone-100 dark:bg-stone-800/80 text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-700'
+                      ? 'bg-f7-teal text-white font-black shadow-teal-glow border border-f7-teal-dark'
+                      : 'bg-surface-2 border-2 border-line text-ink-3 hover:bg-surface-3 hover:text-ink'
                   }`}
                 >
-                  <span className="text-[9px] uppercase tracking-tighter opacity-90 font-medium">{day.dayName}</span>
-                  <span className="text-[11px] font-bold leading-none">{day.dayNumber}</span>
+                  <span className="text-[10px] uppercase font-bold leading-none">{day.dayName}</span>
+                  <span className="text-xs font-extrabold leading-none">{day.dayNumber}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Quick 2-Minute Rule Shortcut (when not completed yet today) */}
+        {/* Flip7 Cream 2-Minute Rule Shortcut (when not completed yet today) */}
         {!streak.completedToday && habit.twoMinuteVersion && (
-          <div className="mt-3.5 bg-stone-50 dark:bg-stone-800/50 rounded-xl p-2.5 border border-dashed border-stone-200 dark:border-stone-700/80 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Zap className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+          <div className="mt-4 bg-f7-cream text-ink rounded-2xl p-3 border-2 border-dashed border-f7-gold-dark/40 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-6 h-6 rounded-full bg-f7-gold text-f7-teal-dark flex items-center justify-center flex-shrink-0 shadow-xs">
+                <Zap className="w-3.5 h-3.5 fill-current" />
+              </span>
               <div className="truncate text-xs">
-                <span className="font-semibold text-stone-800 dark:text-stone-200">2-Minute Rule:</span>{' '}
-                <span className="text-stone-700 dark:text-stone-300">{habit.twoMinuteVersion}</span>
+                <span className="font-black text-f7-teal-dark">2-Min Rule:</span>{' '}
+                <span className="text-ink-2 font-semibold">{habit.twoMinuteVersion}</span>
               </div>
             </div>
             <button
+              type="button"
               onClick={handleCompleteTwoMinute}
-              className="text-[11px] font-bold text-amber-800 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-200 bg-amber-500/15 hover:bg-amber-500/25 px-2.5 py-1 rounded-md transition-colors cursor-pointer flex-shrink-0"
+              className="f7-btn f7-btn-gold text-xs py-1 px-3.5 min-h-0 flex-shrink-0"
             >
               Did this!
             </button>
@@ -301,69 +338,72 @@ export const HabitCard: React.FC<HabitCardProps> = ({
         )}
 
         {/* Accordion Toggle for 4 Laws */}
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between">
           <button
+            type="button"
             onClick={() => setShowDetails(!showDetails)}
-            className="flex items-center gap-1 text-[11px] font-semibold text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200 transition-colors cursor-pointer"
+            aria-expanded={showDetails}
+            aria-controls={detailsId}
+            className="flex items-center gap-1.5 text-xs font-black text-f7-teal hover:text-f7-teal-dark transition-colors cursor-pointer"
           >
-            <span>{showDetails ? 'Hide Atomic Blueprint' : 'Show 4 Laws Blueprint'}</span>
-            {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            <span>{showDetails ? 'Hide 4 Laws Blueprint' : 'Show 4 Laws Blueprint'}</span>
+            {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
-          <span className="text-[11px] font-medium text-stone-600 dark:text-stone-400">
+          <span className="text-xs font-extrabold text-ink-3">
             {streak.totalCompletions} votes cast
           </span>
         </div>
 
         {/* The 4 Laws Blueprint Details Drawer */}
         {showDetails && (
-          <div className="mt-3 pt-3 border-t border-stone-100 dark:border-stone-800/80 space-y-2.5 text-xs animate-in fade-in duration-200">
-            {/* 1st Law: Make it Obvious */}
-            <div className="p-2.5 rounded-lg bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20">
-              <div className="flex items-center gap-1.5 font-semibold text-amber-900 dark:text-amber-300 mb-1">
-                <ArrowRight className="w-3.5 h-3.5 text-amber-500" />
+          <div id={detailsId} className="mt-3.5 pt-3.5 border-t-2 border-dashed border-line space-y-2.5 text-xs animate-fade-in">
+            {/* 1st Law: Make it Obvious (Teal Card) */}
+            <div className="p-3 rounded-2xl bg-f7-teal-bg border-2 border-f7-teal/30">
+              <div className="flex items-center gap-1.5 font-black text-f7-teal-dark mb-1">
+                <ArrowRight className="w-4 h-4 text-f7-teal" />
                 <span>1st Law: Make it Obvious (Habit Stack)</span>
               </div>
-              <p className="text-stone-700 dark:text-stone-300 text-[11px]">
-                After <strong className="text-amber-800 dark:text-amber-300">"{habit.habitStack?.after || 'my morning routine'}"</strong>,{' '}
-                I will <strong className="text-amber-800 dark:text-amber-300">"{habit.habitStack?.then || habit.title}"</strong>.
+              <p className="text-ink-2 font-medium">
+                After <strong className="text-ink">"{habit.habitStack?.after || 'my morning routine'}"</strong>,{' '}
+                I will <strong className="text-ink">"{habit.habitStack?.then || habit.title}"</strong>.
               </p>
             </div>
 
-            {/* 2nd Law: Make it Attractive */}
+            {/* 2nd Law: Make it Attractive (Coral Card) */}
             {habit.attractiveReward && (
-              <div className="p-2.5 rounded-lg bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/20">
-                <div className="flex items-center gap-1.5 font-semibold text-rose-900 dark:text-rose-300 mb-1">
-                  <Gift className="w-3.5 h-3.5 text-rose-500" />
+              <div className="p-3 rounded-2xl bg-coral-bg border-2 border-f7-coral/30">
+                <div className="flex items-center gap-1.5 font-black text-coral-fg mb-1">
+                  <Gift className="w-4 h-4 text-f7-coral" />
                   <span>2nd Law: Make it Attractive (Temptation Bundle)</span>
                 </div>
-                <p className="text-stone-700 dark:text-stone-300 text-[11px]">
+                <p className="text-ink-2 font-medium">
                   {habit.attractiveReward}
                 </p>
               </div>
             )}
 
-            {/* 3rd Law: Make it Easy */}
+            {/* 3rd Law: Make it Easy (Gold Card) */}
             {habit.twoMinuteVersion && (
-              <div className="p-2.5 rounded-lg bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20">
-                <div className="flex items-center gap-1.5 font-semibold text-emerald-900 dark:text-emerald-300 mb-1">
-                  <Zap className="w-3.5 h-3.5 text-emerald-500" />
+              <div className="p-3 rounded-2xl bg-f7-cream border-2 border-f7-gold/40">
+                <div className="flex items-center gap-1.5 font-black text-f7-gold-dark mb-1">
+                  <Zap className="w-4 h-4 text-f7-gold" />
                   <span>3rd Law: Make it Easy (The 2-Minute Rule)</span>
                 </div>
-                <p className="text-stone-700 dark:text-stone-300 text-[11px]">
+                <p className="text-ink-2 font-medium">
                   Scale down friction: <span className="italic">"{habit.twoMinuteVersion}"</span>
                 </p>
               </div>
             )}
 
-            {/* 4th Law: Make it Satisfying */}
-            <div className="p-2.5 rounded-lg bg-sky-500/5 dark:bg-sky-500/10 border border-sky-500/20">
-              <div className="flex items-center gap-1.5 font-semibold text-sky-900 dark:text-sky-300 mb-1">
-                <Sparkles className="w-3.5 h-3.5 text-sky-500" />
+            {/* 4th Law: Make it Satisfying (Sky Blue Card) */}
+            <div className="p-3 rounded-2xl bg-sky-bg border-2 border-f7-sky/30">
+              <div className="flex items-center gap-1.5 font-black text-sky-fg mb-1">
+                <Sparkles className="w-4 h-4 text-f7-sky" />
                 <span>4th Law: Make it Satisfying (Never Miss Twice)</span>
               </div>
-              <p className="text-stone-700 dark:text-stone-300 text-[11px]">
-                Immediate visual streak tracking + identity reinforcement. You have logged this <strong>{streak.totalCompletions} times</strong>.
+              <p className="text-ink-2 font-medium">
+                Immediate visual streak tracking + identity reinforcement. You have cast <strong className="text-ink">{streak.totalCompletions} ballots</strong> for this identity!
               </p>
             </div>
           </div>
