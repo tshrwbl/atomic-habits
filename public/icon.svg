@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%" fx="30%" fy="30%">
+      <stop offset="0%" stop-color="#1c1917" />
+      <stop offset="100%" stop-color="#0c0a09" />
+    </radialGradient>
+    <linearGradient id="orbit1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+    <linearGradient id="orbit2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <radialGradient id="core" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#fef3c7" />
+      <stop offset="40%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </radialGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="#292524" stroke-width="4"/>
+
+  <!-- Orbits -->
+  <g transform="translate(256, 256)">
+    <!-- Orbit 1 -->
+    <ellipse rx="180" ry="72" fill="none" stroke="url(#orbit1)" stroke-width="12" transform="rotate(30)" opacity="0.85" filter="url(#glow)"/>
+    <!-- Orbit 2 -->
+    <ellipse rx="180" ry="72" fill="none" stroke="url(#orbit2)" stroke-width="12" transform="rotate(-30)" opacity="0.85" filter="url(#glow)"/>
+    <!-- Orbit 3 -->
+    <ellipse rx="180" ry="72" fill="none" stroke="#38bdf8" stroke-width="10" transform="rotate(90)" opacity="0.6"/>
+
+    <!-- Electrons -->
+    <circle cx="150" cy="50" r="16" fill="#fbbf24" filter="url(#glow)"/>
+    <circle cx="-140" cy="65" r="14" fill="#34d399" filter="url(#glow)"/>
+    <circle cx="0" cy="-175" r="15" fill="#38bdf8" filter="url(#glow)"/>
+
+    <!-- Glowing Core (The Habit Identity Center) -->
+    <circle cx="0" cy="0" r="46" fill="url(#core)" filter="url(#glow)"/>
+    <circle cx="-12" cy="-12" r="12" fill="#fff" opacity="0.7"/>
+  </g>
+</svg>
