@@ -29,6 +29,12 @@ export interface Habit {
   targetPerWeek?: number;    // Usually 7
   archived?: boolean;
   
+  // Routine & Habit Linking
+  routineId?: string;       // Groups habits into a routine
+  routineName?: string;     // Display title, e.g. "Morning Momentum Routine"
+  orderInRoutine?: number;  // Sequence order in routine (1, 2, 3...)
+  linkedHabitId?: string;   // ID of previous habit in the stack sequence
+
   // 1% Betterment Engine
   betterment?: BettermentConfig;
   bettermentLogs?: Record<string, number>; // dateStr -> actual value logged
@@ -52,4 +58,8 @@ export interface HabitTemplate {
   attractiveReward: string;
   description: string;
   betterment?: BettermentConfig;
+  routineId?: string;
+  routineName?: string;
+  orderInRoutine?: number;
+  linkedHabitId?: string;
 }

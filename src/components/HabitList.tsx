@@ -11,11 +11,17 @@ import {
   Moon,
   Clock,
   Share2,
-  Archive
+  Archive,
+  Layers
 } from 'lucide-react';
 import { Habit, TimeOfDay } from '../types';
 import { HabitCard } from './HabitCard';
-import { getTodayDateString } from '../utils/dateUtils';
+import { RoutineCard } from './RoutineCard';
+import { 
+  getTodayDateString, 
+  getCurrentTimeOfDayFilter, 
+  getTimeOfDayDescription 
+} from '../utils/dateUtils';
 
 interface HabitListProps {
   habits: Habit[];
@@ -28,6 +34,10 @@ interface HabitListProps {
   onOpenBetterment?: (habit: Habit) => void;
   onShareHabit?: (habit: Habit) => void;
   onOpenShareModal?: () => void;
+  onAddStepToRoutine?: (parentHabit: Habit) => void;
+  onUnlinkStep?: (habitId: string) => void;
+  onRenameRoutine?: (routineId: string, newName: string) => void;
+  onLinkToRoutine?: (habit: Habit) => void;
 }
 
 export const HabitList: React.FC<HabitListProps> = ({
@@ -41,8 +51,14 @@ export const HabitList: React.FC<HabitListProps> = ({
   onOpenBetterment,
   onShareHabit,
   onOpenShareModal,
+  onAddStepToRoutine,
+  onUnlinkStep,
+  onRenameRoutine,
+  onLinkToRoutine,
 }) => {
-  const [selectedTime, setSelectedTime] = useState<'all' | TimeOfDay>('all');
+  // Auto-detect current time of day filter (<12pm morning, 12-6pm afternoon, >6pm evening)
+  const currentTimeSlot = getCurrentTimeOfDayFilter();
+  const [selectedTime, setSelectedTime] = useState<'all' | TimeOfDay>(() => currentTimeSlot);
   const [selectedIdentity, setSelectedIdentity] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
@@ -58,27 +74,86 @@ export const HabitList: React.FC<HabitListProps> = ({
     return Array.from(set);
   }, [habits]);
 
-  // Filtered habits
-  const filteredHabits = useMemo(() => {
-    return habits.filter((h) => {
-      if (showArchived ? !h.archived : h.archived) {
-        return false;
-      }
-      if (selectedTime !== 'all' && h.timeOfDay !== selectedTime && h.timeOfDay !== 'anytime') {
-        return false;
-      }
-      if (selectedIdentity !== 'all' && h.identity !== selectedIdentity) {
-        return false;
-      }
+  // Group habits into Routines (2+ linked habits) and Standalone habits
+  const { matchingRoutines, standaloneHabits } = useMemo(() => {
+    // 1. Group active/archived habits by routineId
+    const routineMap = new Map<string, { id: string; name: string; steps: Habit[] }>();
+    const singleCandidateHabits: Habit[] = [];
+
+    // Helper to test if a single habit matches search and identity filters
+    const matchesFilter = (h: Habit) => {
+      if (showArchived ? !h.archived : h.archived) return false;
+      if (selectedIdentity !== 'all' && h.identity !== selectedIdentity) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchTitle = h.title.toLowerCase().includes(q);
         const matchIdentity = h.identity.toLowerCase().includes(q);
         const matchStack = h.habitStack?.after.toLowerCase().includes(q);
-        return matchTitle || matchIdentity || matchStack;
+        const matchRoutine = h.routineName?.toLowerCase().includes(q);
+        return matchTitle || matchIdentity || matchStack || matchRoutine;
+      }
+      return true;
+    };
+
+    // Separate habits into routine groups or singles
+    const allMatchingArchive = habits.filter((h) => (showArchived ? h.archived : !h.archived));
+    
+    // Collect potential routines
+    allMatchingArchive.forEach((h) => {
+      if (h.routineId) {
+        if (!routineMap.has(h.routineId)) {
+          routineMap.set(h.routineId, {
+            id: h.routineId,
+            name: h.routineName || 'Daily Routine',
+            steps: [],
+          });
+        }
+        routineMap.get(h.routineId)!.steps.push(h);
+      } else {
+        singleCandidateHabits.push(h);
+      }
+    });
+
+    const routinesResult: { id: string; name: string; steps: Habit[] }[] = [];
+    
+    // Process routine groups
+    routineMap.forEach((routine) => {
+      if (routine.steps.length >= 2) {
+        // Sort steps by orderInRoutine
+        routine.steps.sort((a, b) => (a.orderInRoutine || 1) - (b.orderInRoutine || 1));
+
+        // Check if routine satisfies selectedTime
+        const matchesTime =
+          selectedTime === 'all' ||
+          routine.steps.some(
+            (s) => s.timeOfDay === selectedTime || s.timeOfDay === 'anytime'
+          );
+
+        // Check if any step satisfies search and identity
+        const matchesQuery = routine.steps.some((s) => matchesFilter(s));
+
+        if (matchesTime && matchesQuery) {
+          routinesResult.push(routine);
+        }
+      } else {
+        // Routine with only 1 step is treated as a standalone habit
+        routine.steps.forEach((s) => singleCandidateHabits.push(s));
+      }
+    });
+
+    // Filter standalone habits
+    const singlesResult = singleCandidateHabits.filter((h) => {
+      if (!matchesFilter(h)) return false;
+      if (selectedTime !== 'all' && h.timeOfDay !== selectedTime && h.timeOfDay !== 'anytime') {
+        return false;
       }
       return true;
     });
+
+    return {
+      matchingRoutines: routinesResult,
+      standaloneHabits: singlesResult,
+    };
   }, [habits, selectedTime, selectedIdentity, searchQuery, showArchived]);
 
   // Today's summary progress
@@ -200,11 +275,12 @@ export const HabitList: React.FC<HabitListProps> = ({
             <select
               value={selectedIdentity}
               onChange={(e) => setSelectedIdentity(e.target.value)}
-              className="text-xs bg-stone-100 dark:bg-stone-800 border-none rounded-xl px-3 py-2 text-stone-800 dark:text-stone-200 focus:ring-2 focus:ring-amber-500 cursor-pointer font-medium"
+              title={selectedIdentity === 'all' ? `All Identities (${identities.length})` : selectedIdentity}
+              className="w-40 sm:w-44 shrink-0 truncate text-xs bg-stone-100 dark:bg-stone-800 border-none rounded-xl px-3 py-2 text-stone-800 dark:text-stone-200 focus:ring-2 focus:ring-amber-500 cursor-pointer font-medium"
             >
               <option value="all">All Identities ({identities.length})</option>
               {identities.map((id) => (
-                <option key={id} value={id}>
+                <option key={id} value={id} title={id}>
                   {id}
                 </option>
               ))}
@@ -225,21 +301,68 @@ export const HabitList: React.FC<HabitListProps> = ({
         </div>
       </div>
 
-      {/* Habits Grid / List */}
-      {filteredHabits.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredHabits.map((habit) => (
-            <HabitCard
-              key={habit.id}
-              habit={habit}
-              onToggleDate={onToggleDate}
-              onEditHabit={onEditHabit}
-              onDeleteHabit={onDeleteHabit}
-              onToggleArchiveHabit={onToggleArchiveHabit}
-              onOpenBetterment={onOpenBetterment}
-              onShareHabit={onShareHabit}
-            />
-          ))}
+      {/* Habits & Routines Section */}
+      {matchingRoutines.length > 0 || standaloneHabits.length > 0 ? (
+        <div className="space-y-6">
+          {/* Routines Block */}
+          {matchingRoutines.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                  <Layers className="w-4 h-4 text-amber-500" />
+                  <span>Habit Routines & Stacks ({matchingRoutines.length})</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {matchingRoutines.map((routine) => (
+                  <RoutineCard
+                    key={routine.id}
+                    routineId={routine.id}
+                    routineName={routine.name}
+                    steps={routine.steps}
+                    onToggleDate={onToggleDate}
+                    onEditHabit={onEditHabit}
+                    onDeleteHabit={onDeleteHabit}
+                    onToggleArchiveHabit={onToggleArchiveHabit}
+                    onOpenBetterment={onOpenBetterment}
+                    onShareHabit={onShareHabit}
+                    onAddStepToRoutine={onAddStepToRoutine}
+                    onUnlinkStep={onUnlinkStep}
+                    onRenameRoutine={onRenameRoutine}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Standalone Habits Block */}
+          {standaloneHabits.length > 0 && (
+            <div className="space-y-3">
+              {matchingRoutines.length > 0 && (
+                <div className="flex items-center gap-2 pt-2 text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <span>Individual Atomic Habits ({standaloneHabits.length})</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {standaloneHabits.map((habit) => (
+                  <HabitCard
+                    key={habit.id}
+                    habit={habit}
+                    onToggleDate={onToggleDate}
+                    onEditHabit={onEditHabit}
+                    onDeleteHabit={onDeleteHabit}
+                    onToggleArchiveHabit={onToggleArchiveHabit}
+                    onOpenBetterment={onOpenBetterment}
+                    onShareHabit={onShareHabit}
+                    onLinkToRoutine={onLinkToRoutine}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="text-center py-12 px-4 rounded-2xl border-2 border-dashed border-stone-200 dark:border-stone-800">

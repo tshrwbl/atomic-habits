@@ -17,7 +17,9 @@ import {
   Target,
   Share2,
   Archive,
-  ArchiveRestore
+  ArchiveRestore,
+  Layers,
+  Link as LinkIcon
 } from 'lucide-react';
 import { Habit } from '../types';
 import { calculateStreak, getPastDays, getTodayDateString } from '../utils/dateUtils';
@@ -32,6 +34,7 @@ interface HabitCardProps {
   onToggleArchiveHabit: (habitId: string) => void;
   onOpenBetterment?: (habit: Habit) => void;
   onShareHabit?: (habit: Habit) => void;
+  onLinkToRoutine?: (habit: Habit) => void;
 }
 
 export const HabitCard: React.FC<HabitCardProps> = ({
@@ -42,6 +45,7 @@ export const HabitCard: React.FC<HabitCardProps> = ({
   onToggleArchiveHabit,
   onOpenBetterment,
   onShareHabit,
+  onLinkToRoutine,
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -135,6 +139,14 @@ export const HabitCard: React.FC<HabitCardProps> = ({
                   <Clock className="w-3 h-3 text-stone-500 dark:text-stone-400" />
                   {habit.timeOfDay}
                 </span>
+
+                {/* Routine Badge if linked */}
+                {habit.routineName && (
+                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-900 dark:text-amber-300 border border-amber-500/20 flex items-center gap-1">
+                    <Layers className="w-3 h-3 text-amber-500" />
+                    <span>{habit.routineName} {habit.orderInRoutine ? `(Step ${habit.orderInRoutine})` : ''}</span>
+                  </span>
+                )}
               </div>
 
               <h3 className={`text-base font-semibold leading-snug break-words transition-colors ${
@@ -257,6 +269,18 @@ export const HabitCard: React.FC<HabitCardProps> = ({
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Edit</span>
                   </button>
+                  {onLinkToRoutine && (
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        onLinkToRoutine(habit);
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left rounded-lg hover:bg-stone-100 dark:hover:bg-stone-700 text-amber-700 dark:text-amber-400 cursor-pointer"
+                    >
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      <span>Link into Routine</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setShowMenu(false);

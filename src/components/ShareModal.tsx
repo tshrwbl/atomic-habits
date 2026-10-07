@@ -239,6 +239,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         completedDates: Array.isArray(item.completedDates) ? item.completedDates : [],
         createdAt: item.createdAt || getTodayDateString(),
         targetPerWeek: typeof item.targetPerWeek === 'number' ? item.targetPerWeek : 7,
+        routineId: item.routineId ? String(item.routineId) : undefined,
+        routineName: item.routineName ? String(item.routineName) : undefined,
+        orderInRoutine: typeof item.orderInRoutine === 'number' ? item.orderInRoutine : undefined,
+        linkedHabitId: item.linkedHabitId ? String(item.linkedHabitId) : undefined,
         betterment: item.betterment
           ? {
               enabled: item.betterment.enabled !== false,
@@ -338,8 +342,12 @@ For EACH habit in the routine, configure ALL settings according to the 4 Laws of
    - "period": Compounding increment interval. MUST be one of: "daily", "weekly", or "monthly".
    - "ratePercent": Compounding rate percentage (standard is 1 for +1% compounding).
    - "startDate": "${today}" (current date YYYY-MM-DD).
-9. "completedDates": [] (empty array).
-10. "createdAt": "${today}" (current date YYYY-MM-DD).
+9. "routineId": (Optional string) Identifier to group habits into a linked routine sequence (e.g. "routine-morning").
+10. "routineName": (Optional string) Human-friendly routine name (e.g. "Morning Momentum Routine").
+11. "orderInRoutine": (Optional number) 1-based order within routine (1, 2, 3...).
+12. "linkedHabitId": (Optional string) ID of previous habit in stack sequence.
+13. "completedDates": [] (empty array).
+14. "createdAt": "${today}" (current date YYYY-MM-DD).
 
 =====================================================
 JSON SCHEMA & SAMPLE OUTPUT:
@@ -353,12 +361,41 @@ Return ONLY a valid JSON object matching this exact schema:
   "habits": [
     {
       "id": "habit-ai-1",
+      "title": "Morning Core & Mobility Movement",
+      "identity": "Energized Athlete",
+      "timeOfDay": "morning",
+      "routineId": "routine-morning-kickstart",
+      "routineName": "Morning Momentum Routine",
+      "orderInRoutine": 1,
+      "habitStack": {
+        "after": "After I roll out of bed and drink water",
+        "then": "I will do 10 minutes of mobility movements"
+      },
+      "twoMinuteVersion": "Do 5 pushups and stretch hamstrings",
+      "attractiveReward": "Play favorite high-energy morning playlist",
+      "betterment": {
+        "enabled": true,
+        "baselineValue": 10,
+        "unit": "mins",
+        "period": "daily",
+        "ratePercent": 1,
+        "startDate": "${today}"
+      },
+      "completedDates": [],
+      "createdAt": "${today}"
+    },
+    {
+      "id": "habit-ai-2",
       "title": "Read 10 Pages of Non-Fiction",
       "identity": "Lifelong Learner",
       "timeOfDay": "morning",
+      "routineId": "routine-morning-kickstart",
+      "routineName": "Morning Momentum Routine",
+      "orderInRoutine": 2,
+      "linkedHabitId": "habit-ai-1",
       "habitStack": {
-        "after": "After I brew my morning coffee",
-        "then": "I will read non-fiction books"
+        "after": "After I finish morning mobility movement",
+        "then": "I will sit and read non-fiction books"
       },
       "twoMinuteVersion": "Open book and read just 1 page",
       "attractiveReward": "Sip fresh espresso in my favorite armchair",
@@ -563,6 +600,11 @@ STRICT RULES FOR OUTPUT:
                             className="rounded text-amber-500 focus:ring-amber-500"
                           />
                           <span className="truncate">{habit.title}</span>
+                          {habit.routineName && (
+                            <span className="text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded hidden sm:inline">
+                              {habit.routineName} {habit.orderInRoutine ? `#${habit.orderInRoutine}` : ''}
+                            </span>
+                          )}
                         </div>
                         <span className="text-[10px] text-stone-600 dark:text-stone-400 font-semibold capitalize px-1.5 py-0.5 rounded bg-stone-200/80 dark:bg-stone-700/80 flex-shrink-0">
                           {habit.identity}

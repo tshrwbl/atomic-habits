@@ -130,3 +130,27 @@ export function calculateStreak(completedDates: string[]): StreakInfo {
     totalCompletions,
   };
 }
+
+/**
+ * Returns time of day based on current local hour:
+ * < 12pm -> 'morning'
+ * 12pm - 6pm (12 - 18) -> 'afternoon'
+ * post 6pm (>= 18) -> 'evening'
+ */
+export function getCurrentTimeOfDayFilter(): 'morning' | 'afternoon' | 'evening' {
+  const hour = new Date().getHours();
+  if (hour >= 4 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 18) return 'afternoon';
+  return 'evening';
+}
+
+export function getTimeOfDayDescription(time: 'morning' | 'afternoon' | 'evening'): string {
+  switch (time) {
+    case 'morning':
+      return 'Morning';
+    case 'afternoon':
+      return 'Afternoon';
+    case 'evening':
+      return 'Evening';
+  }
+}

@@ -10,12 +10,49 @@ function getDateAgo(daysAgo: number): string {
 
 export const INITIAL_HABITS: Habit[] = [
   {
+    id: 'habit-2',
+    title: 'Core & Mobility Movement',
+    identity: 'Energized Athlete',
+    timeOfDay: 'morning',
+    routineId: 'routine-morning-momentum',
+    routineName: 'Morning Momentum Routine',
+    orderInRoutine: 1,
+    habitStack: {
+      after: 'I get out of bed and drink water',
+      then: 'I will do bodyweight movement',
+    },
+    twoMinuteVersion: 'Do 5 pushups and stretch hamstrings',
+    attractiveReward: 'Play favorite high-energy music playlist',
+    completedDates: [
+      getDateAgo(5),
+      getDateAgo(4),
+      getDateAgo(2),
+      getDateAgo(1),
+    ],
+    createdAt: getDateAgo(14),
+    betterment: {
+      enabled: true,
+      baselineValue: 15,
+      unit: 'mins',
+      period: 'weekly',
+      ratePercent: 1,
+      startDate: getDateAgo(14),
+    },
+    bettermentLogs: {
+      [getDateAgo(1)]: 15.3,
+    },
+  },
+  {
     id: 'habit-1',
     title: 'Read 10 Pages of Non-Fiction',
     identity: 'Lifelong Learner',
     timeOfDay: 'morning',
+    routineId: 'routine-morning-momentum',
+    routineName: 'Morning Momentum Routine',
+    orderInRoutine: 2,
+    linkedHabitId: 'habit-2',
     habitStack: {
-      after: 'I brew my morning coffee',
+      after: 'I finish morning movement and brew coffee',
       then: 'I will sit and read',
     },
     twoMinuteVersion: 'Open book and read just 1 page',
@@ -40,36 +77,6 @@ export const INITIAL_HABITS: Habit[] = [
       [getDateAgo(3)]: 10.7,
       [getDateAgo(2)]: 11,
       [getDateAgo(1)]: 11,
-    },
-  },
-  {
-    id: 'habit-2',
-    title: 'Core & Mobility Movement',
-    identity: 'Energized Athlete',
-    timeOfDay: 'morning',
-    habitStack: {
-      after: 'I get out of bed and drink water',
-      then: 'I will do bodyweight movement',
-    },
-    twoMinuteVersion: 'Do 5 pushups and stretch hamstrings',
-    attractiveReward: 'Play favorite high-energy music playlist',
-    completedDates: [
-      getDateAgo(5),
-      getDateAgo(4),
-      getDateAgo(2),
-      getDateAgo(1),
-    ],
-    createdAt: getDateAgo(14),
-    betterment: {
-      enabled: true,
-      baselineValue: 15,
-      unit: 'mins',
-      period: 'weekly',
-      ratePercent: 1,
-      startDate: getDateAgo(14),
-    },
-    bettermentLogs: {
-      [getDateAgo(1)]: 15.3,
     },
   },
   {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Sparkles, User, Clock, ArrowRight, Zap, Gift, Check, TrendingUp } from 'lucide-react';
+import { X, Sparkles, User, Clock, ArrowRight, Zap, Gift, Check, TrendingUp, Layers, Link as LinkIcon, Unlink } from 'lucide-react';
 import { Habit, TimeOfDay, BettermentPeriod } from '../types';
 import { calculateTargetValue } from '../utils/bettermentUtils';
 import { getTodayDateString } from '../utils/dateUtils';
@@ -7,8 +7,14 @@ import { getTodayDateString } from '../utils/dateUtils';
 interface AddHabitModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaveHabit: (habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt'>, existingId?: string) => void;
+  onSaveHabit: (
+    habit: Omit<Habit, 'id' | 'completedDates' | 'createdAt'>, 
+    existingId?: string,
+    parentHabitToLink?: Habit
+  ) => void;
   editingHabit: Habit | null;
+  allHabits?: Habit[];
+  initialParentHabitId?: string | null;
 }
 
 const COMMON_IDENTITIES = [
@@ -27,6 +33,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   onClose,
   onSaveHabit,
   editingHabit,
+  allHabits = [],
+  initialParentHabitId = null,
 }) => {
   const [title, setTitle] = useState('');
   const [identity, setIdentity] = useState('');
@@ -36,12 +44,22 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   const [twoMinuteVersion, setTwoMinuteVersion] = useState('');
   const [attractiveReward, setAttractiveReward] = useState('');
 
+  // Routine & Habit Linking State
+  const [isRoutineLinked, setIsRoutineLinked] = useState(false);
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
+  const [routineNameInput, setRoutineNameInput] = useState('');
+
   // 1% Betterment Engine state
   const [bettermentEnabled, setBettermentEnabled] = useState(true);
   const [bettermentBaseline, setBettermentBaseline] = useState<number>(10);
   const [bettermentUnit, setBettermentUnit] = useState('pages');
   const [bettermentPeriod, setBettermentPeriod] = useState<BettermentPeriod>('daily');
   const [bettermentRate, setBettermentRate] = useState<number>(1);
+
+  // Candidate habits that can be selected as a parent/anchor
+  const candidateParents = allHabits.filter(
+    (h) => !editingHabit || h.id !== editingHabit.id
+  );
 
   useEffect(() => {
     if (editingHabit) {
@@ -52,6 +70,11 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
       setStackAfter(editingHabit.habitStack?.after || '');
       setTwoMinuteVersion(editingHabit.twoMinuteVersion || '');
       setAttractiveReward(editingHabit.attractiveReward || '');
+
+      const hasRoutine = Boolean(editingHabit.routineId);
+      setIsRoutineLinked(hasRoutine);
+      setSelectedParentId(editingHabit.linkedHabitId || '');
+      setRoutineNameInput(editingHabit.routineName || '');
 
       if (editingHabit.betterment) {
         setBettermentEnabled(editingHabit.betterment.enabled);
@@ -66,8 +89,6 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
       setTitle('');
       setIdentity(COMMON_IDENTITIES[0]);
       setCustomIdentity('');
-      setTimeOfDay('morning');
-      setStackAfter('');
       setTwoMinuteVersion('');
       setAttractiveReward('');
       setBettermentEnabled(true);
@@ -75,8 +96,23 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
       setBettermentUnit('pages');
       setBettermentPeriod('daily');
       setBettermentRate(1);
+
+      if (initialParentHabitId) {
+        const parent = allHabits.find((h) => h.id === initialParentHabitId);
+        setIsRoutineLinked(true);
+        setSelectedParentId(initialParentHabitId);
+        setTimeOfDay(parent?.timeOfDay || 'morning');
+        setRoutineNameInput(parent?.routineName || (parent ? `${parent.title} Routine` : 'Morning Momentum Routine'));
+        setStackAfter(parent ? `I finish ${parent.title}` : '');
+      } else {
+        setIsRoutineLinked(false);
+        setSelectedParentId('');
+        setRoutineNameInput('');
+        setTimeOfDay('morning');
+        setStackAfter('');
+      }
     }
-  }, [editingHabit, isOpen]);
+  }, [editingHabit, isOpen, initialParentHabitId]);
 
   if (!isOpen) return null;
 
@@ -84,11 +120,62 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
   const periodsInYear = bettermentPeriod === 'daily' ? 365 : bettermentPeriod === 'weekly' ? 52 : 12;
   const projectedOneYear = calculateTargetValue(bettermentBaseline || 1, bettermentRate, periodsInYear);
 
+  const handleParentHabitSelect = (parentId: string) => {
+    setSelectedParentId(parentId);
+    if (!parentId) return;
+
+    const parent = allHabits.find((h) => h.id === parentId);
+    if (parent) {
+      if (parent.timeOfDay && parent.timeOfDay !== 'anytime') {
+        setTimeOfDay(parent.timeOfDay);
+      }
+      setRoutineNameInput(parent.routineName || `${parent.title} Routine`);
+      setStackAfter(`I finish ${parent.title}`);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
     const finalIdentity = customIdentity.trim() || identity || 'Better Self';
+
+    // Determine routine parameters
+    let finalRoutineId: string | undefined = undefined;
+    let finalRoutineName: string | undefined = undefined;
+    let finalOrder: number | undefined = undefined;
+    let finalLinkedHabitId: string | undefined = undefined;
+    let parentHabitToUpdate: Habit | undefined = undefined;
+
+    if (isRoutineLinked) {
+      const parent = allHabits.find((h) => h.id === selectedParentId);
+      if (parent) {
+        finalRoutineId = parent.routineId || `routine-${Date.now()}`;
+        finalRoutineName = routineNameInput.trim() || parent.routineName || `${parent.title} Routine`;
+        finalLinkedHabitId = parent.id;
+        finalOrder = (parent.orderInRoutine || 1) + 1;
+        
+        // If parent wasn't part of a routine yet, pass it so App can update it as Step 1
+        if (!parent.routineId) {
+          parentHabitToUpdate = {
+            ...parent,
+            routineId: finalRoutineId,
+            routineName: finalRoutineName,
+            orderInRoutine: 1,
+          };
+        }
+      } else if (editingHabit?.routineId) {
+        finalRoutineId = editingHabit.routineId;
+        finalRoutineName = routineNameInput.trim() || editingHabit.routineName || 'Daily Routine';
+        finalOrder = editingHabit.orderInRoutine || 1;
+        finalLinkedHabitId = editingHabit.linkedHabitId;
+      } else {
+        // Routine with no specific parent selected yet
+        finalRoutineId = `routine-${Date.now()}`;
+        finalRoutineName = routineNameInput.trim() || 'Daily Routine';
+        finalOrder = 1;
+      }
+    }
 
     onSaveHabit(
       {
@@ -96,9 +183,13 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
         identity: finalIdentity,
         timeOfDay,
         habitStack: {
-          after: stackAfter.trim() || 'my morning routine',
+          after: stackAfter.trim() || 'my regular routine',
           then: title.trim(),
         },
+        routineId: finalRoutineId,
+        routineName: finalRoutineName,
+        orderInRoutine: finalOrder,
+        linkedHabitId: finalLinkedHabitId,
         twoMinuteVersion: twoMinuteVersion.trim() || undefined,
         attractiveReward: attractiveReward.trim() || undefined,
         betterment: bettermentEnabled
@@ -112,7 +203,8 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
             }
           : undefined,
       },
-      editingHabit?.id
+      editingHabit?.id,
+      parentHabitToUpdate
     );
 
     onClose();
@@ -361,25 +453,139 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
 
           <div className="h-px bg-stone-100 dark:bg-stone-800 my-1" />
 
-          {/* 1st Law: Habit Stacking */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800 dark:text-stone-200">
-              <ArrowRight className="w-3.5 h-3.5 text-amber-500" />
-              <span>1st Law: Habit Stacking (Anchor Habit)</span>
+          {/* 1st Law: Habit Stacking & Routine Linking */}
+          <div className="space-y-3 p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-stone-900 dark:text-white">
+                    1st Law: Habit Stacking & Routine Linking
+                  </h3>
+                  <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                    Formula: "After [CURRENT HABIT], I will [NEW HABIT]"
+                  </p>
+                </div>
+              </div>
             </div>
-            <p className="text-[11px] text-stone-600 dark:text-stone-400">
-              Formula: "After [CURRENT HABIT], I will [NEW HABIT]"
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex-shrink-0">After I:</span>
-              <input
-                type="text"
-                placeholder="e.g. pour my morning coffee / close work laptop"
-                value={stackAfter}
-                onChange={(e) => setStackAfter(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
-              />
+
+            {/* Routine Mode Switcher */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRoutineLinked(false);
+                  setSelectedParentId('');
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                  !isRoutineLinked
+                    ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white border-stone-300 dark:border-stone-600 shadow-xs'
+                    : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-700'
+                }`}
+              >
+                <span>🌱 Standalone Habit</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRoutineLinked(true);
+                  if (!selectedParentId && candidateParents.length > 0) {
+                    handleParentHabitSelect(candidateParents[0].id);
+                  }
+                }}
+                className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all cursor-pointer ${
+                  isRoutineLinked
+                    ? 'bg-amber-500 text-stone-950 font-bold border-amber-500 shadow-xs'
+                    : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-700'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>🔗 Link in Routine Chain</span>
+              </button>
             </div>
+
+            {isRoutineLinked ? (
+              <div className="space-y-3 pt-2 border-t border-stone-200 dark:border-stone-700 animate-in fade-in duration-150">
+                {/* Select Parent Habit */}
+                {candidateParents.length > 0 ? (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-stone-800 dark:text-stone-200 mb-1">
+                      Stack Immediately After This Habit:
+                    </label>
+                    <select
+                      value={selectedParentId}
+                      onChange={(e) => handleParentHabitSelect(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    >
+                      <option value="">-- Choose existing anchor habit --</option>
+                      {candidateParents.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} ({p.timeOfDay}) {p.routineName ? `[In: ${p.routineName}]` : '[Standalone]'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <p className="text-xs text-stone-500">
+                    No other habits exist yet. Create this one first, then link your next habit to it!
+                  </p>
+                )}
+
+                {/* Routine Name */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-800 dark:text-stone-200 mb-1">
+                    Routine Chain Name:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Morning Momentum Routine"
+                    value={routineNameInput}
+                    onChange={(e) => setRoutineNameInput(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                  />
+                </div>
+
+                {/* Trigger statement */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-800 dark:text-stone-200 mb-1">
+                    Stack Trigger Formula:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex-shrink-0">
+                      After I:
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="e.g. finish my morning movement"
+                      value={stackAfter}
+                      onChange={(e) => setStackAfter(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Standalone Anchor habit input */
+              <div>
+                <label className="block text-[11px] font-semibold text-stone-800 dark:text-stone-200 mb-1">
+                  Existing Trigger / Anchor Routine:
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex-shrink-0">
+                    After I:
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="e.g. pour my morning coffee / brush my teeth"
+                    value={stackAfter}
+                    onChange={(e) => setStackAfter(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-white text-xs focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 3rd Law: The 2-Minute Rule */}

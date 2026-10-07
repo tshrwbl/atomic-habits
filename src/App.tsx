@@ -59,6 +59,7 @@ export function App() {
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [initialParentHabitId, setInitialParentHabitId] = useState<string | null>(null);
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
 
   // 1% Betterment Engine modal state
@@ -118,30 +119,112 @@ export function App() {
     );
   };
 
+  // Helper to dynamically auto-reorder and fix parent links in a routine sequence based on orderInRoutine
+  const healRoutine = (allHabits: Habit[], routineId: string): Habit[] => {
+    const routineHabits = allHabits.filter((h) => h.routineId === routineId);
+    if (routineHabits.length === 0) return allHabits;
+
+    // Sort by orderInRoutine
+    routineHabits.sort((a, b) => (a.orderInRoutine || 1) - (b.orderInRoutine || 1));
+
+    return allHabits.map((h) => {
+      if (h.routineId !== routineId) return h;
+      const index = routineHabits.findIndex((rh) => rh.id === h.id);
+      const newOrder = index + 1;
+      
+      if (index > 0) {
+        const prev = routineHabits[index - 1];
+        return {
+          ...h,
+          orderInRoutine: newOrder,
+          linkedHabitId: prev.id,
+          habitStack: {
+            ...h.habitStack,
+            after: `I finish ${prev.title}`,
+            then: h.habitStack?.then || h.title,
+          },
+        };
+      } else {
+        // First habit in chain doesn't need to overwrite its manual trigger
+        return {
+          ...h,
+          orderInRoutine: newOrder,
+          linkedHabitId: undefined,
+        };
+      }
+    });
+  };
+
   // Add or update habit
   const handleSaveHabit = (
     data: Omit<Habit, 'id' | 'completedDates' | 'createdAt'>,
-    existingId?: string
+    existingId?: string,
+    parentHabitToUpdate?: Habit
   ) => {
-    if (existingId) {
-      setHabits((prev) =>
-        prev.map((h) => (h.id === existingId ? { ...h, ...data } : h))
-      );
-    } else {
-      const newHabit: Habit = {
+    setHabits((prev) => {
+      let updated = prev;
+      if (parentHabitToUpdate) {
+        updated = updated.map((h) =>
+          h.id === parentHabitToUpdate.id ? { ...h, ...parentHabitToUpdate } : h
+        );
+      }
+      
+      const currentId = existingId || `habit-${Date.now()}`;
+      const isNew = !existingId;
+      const existingHabit = prev.find(h => h.id === currentId);
+      const oldRoutineId = existingHabit?.routineId;
+      
+      const habitData: Habit = {
         ...data,
-        id: `habit-${Date.now()}`,
-        completedDates: [],
-        createdAt: getTodayDateString(),
+        id: currentId,
+        completedDates: isNew ? [] : (existingHabit?.completedDates || []),
+        createdAt: isNew ? getTodayDateString() : (existingHabit?.createdAt || getTodayDateString()),
       };
-      setHabits((prev) => [newHabit, ...prev]);
-    }
+
+      // Assign an intermediary orderInRoutine so it falls right after its linked anchor when sorting
+      if (habitData.routineId && habitData.linkedHabitId) {
+        const parent = updated.find(h => h.id === habitData.linkedHabitId);
+        if (parent) {
+          habitData.orderInRoutine = (parent.orderInRoutine || 1) + 0.5;
+        }
+      } else if (habitData.routineId && !habitData.linkedHabitId) {
+        // No linked parent but part of a routine means it's step 1!
+        habitData.orderInRoutine = 0.5;
+      }
+
+      if (isNew) {
+        updated = [habitData, ...updated];
+      } else {
+        updated = updated.map((h) => (h.id === currentId ? { ...h, ...habitData } : h));
+      }
+
+      // Auto-heal new routine
+      if (habitData.routineId) {
+        updated = healRoutine(updated, habitData.routineId);
+      }
+      // Auto-heal old routine if it changed
+      if (oldRoutineId && oldRoutineId !== habitData.routineId) {
+        updated = healRoutine(updated, oldRoutineId);
+      }
+
+      return updated;
+    });
   };
 
   // Delete habit
   const handleDeleteHabit = (habitId: string) => {
     if (window.confirm('Are you sure you want to delete this habit completely?')) {
-      setHabits((prev) => prev.filter((h) => h.id !== habitId));
+      setHabits((prev) => {
+        const habit = prev.find((h) => h.id === habitId);
+        const routineId = habit?.routineId;
+        
+        let updated = prev.filter((h) => h.id !== habitId);
+        
+        if (routineId) {
+          updated = healRoutine(updated, routineId);
+        }
+        return updated;
+      });
     }
   };
 
@@ -150,6 +233,52 @@ export function App() {
     setHabits((prev) =>
       prev.map((h) => (h.id === habitId ? { ...h, archived: !h.archived } : h))
     );
+  };
+
+  // Unlink habit from routine (makes it standalone)
+  const handleUnlinkHabit = (habitId: string) => {
+    setHabits((prev) => {
+      const habit = prev.find((h) => h.id === habitId);
+      const routineId = habit?.routineId;
+      
+      let updated = prev.map((h) =>
+        h.id === habitId
+          ? {
+              ...h,
+              routineId: undefined,
+              routineName: undefined,
+              orderInRoutine: undefined,
+              linkedHabitId: undefined,
+            }
+          : h
+      );
+
+      if (routineId) {
+        updated = healRoutine(updated, routineId);
+      }
+      return updated;
+    });
+  };
+
+  // Rename routine across all its steps
+  const handleRenameRoutine = (routineId: string, newName: string) => {
+    setHabits((prev) =>
+      prev.map((h) => (h.routineId === routineId ? { ...h, routineName: newName } : h))
+    );
+  };
+
+  // Add step to existing routine
+  const handleAddStepToRoutine = (parentHabit: Habit) => {
+    setEditingHabit(null);
+    setInitialParentHabitId(parentHabit.id);
+    setIsAddModalOpen(true);
+  };
+
+  // Link standalone habit into routine
+  const handleLinkToRoutine = (habit: Habit) => {
+    setEditingHabit(habit);
+    setInitialParentHabitId(null);
+    setIsAddModalOpen(true);
   };
 
   // 1% Betterment Engine modal opener
@@ -165,16 +294,24 @@ export function App() {
     setIsShareModalOpen(true);
   };
 
-  // Import habits handler
+  // Import habits handler (with routine & link preservation)
   const handleImportHabits = (importedHabits: Habit[], mode: 'merge' | 'replace') => {
     if (mode === 'replace') {
       setHabits(importedHabits);
     } else {
-      // Merge: generate unique IDs for incoming habits that already exist
+      // Merge: generate unique IDs for incoming habits that already exist, and re-map linkedHabitId
       const existingIds = new Set(habits.map((h) => h.id));
-      const sanitized = importedHabits.map((h, idx) => ({
+      const idMap = new Map<string, string>();
+
+      importedHabits.forEach((h, idx) => {
+        const newId = existingIds.has(h.id) ? `imported-${Date.now()}-${idx}` : h.id;
+        idMap.set(h.id, newId);
+      });
+
+      const sanitized = importedHabits.map((h) => ({
         ...h,
-        id: existingIds.has(h.id) ? `imported-${Date.now()}-${idx}` : h.id,
+        id: idMap.get(h.id) || h.id,
+        linkedHabitId: h.linkedHabitId ? idMap.get(h.linkedHabitId) || h.linkedHabitId : undefined,
       }));
       setHabits((prev) => [...sanitized, ...prev]);
     }
@@ -344,18 +481,24 @@ export function App() {
             onToggleDate={handleToggleHabitDate}
             onEditHabit={(h) => {
               setEditingHabit(h);
+              setInitialParentHabitId(null);
               setIsAddModalOpen(true);
             }}
             onDeleteHabit={handleDeleteHabit}
             onToggleArchiveHabit={handleToggleArchiveHabit}
             onOpenAddModal={() => {
               setEditingHabit(null);
+              setInitialParentHabitId(null);
               setIsAddModalOpen(true);
             }}
             onOpenTemplatesModal={() => setIsTemplatesModalOpen(true)}
             onOpenBetterment={handleOpenBetterment}
             onShareHabit={(h) => handleOpenShareModal(h.id)}
             onOpenShareModal={() => handleOpenShareModal()}
+            onAddStepToRoutine={handleAddStepToRoutine}
+            onUnlinkStep={handleUnlinkHabit}
+            onRenameRoutine={handleRenameRoutine}
+            onLinkToRoutine={handleLinkToRoutine}
           />
         )}
 
@@ -448,9 +591,12 @@ export function App() {
         onClose={() => {
           setIsAddModalOpen(false);
           setEditingHabit(null);
+          setInitialParentHabitId(null);
         }}
         onSaveHabit={handleSaveHabit}
         editingHabit={editingHabit}
+        allHabits={habits}
+        initialParentHabitId={initialParentHabitId}
       />
 
       {/* Curated Templates Modal */}
